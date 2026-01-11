@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to get user's housing company ID
+    function getUserHousingCompanyId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.housingCompanyId;
+    }
+    
+    // Helper function to get user's role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    // Helper function to check if user is admin or maintenance
+    function isAdminOrMaintenance() {
+      return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'maintenance');
+    }
+    
+    // ========== FAULT REPORTS ==========
+    match /faultReports/{reportId} {
+      // Read: authenticated users can read reports from their housing company
+      allow read: if isAuthenticated() 
+        && resource.data.housingCompanyId == getUserHousingCompanyId();
+      
+      // Create: authenticated users can create reports
+      // - Must set their own uid as createdBy
+      // - Must use their housing company ID
+      // - Status must be 'open'
+      allow create: if isAuthenticated()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.housingCompanyId == getUserHousingCompanyId()
+        && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasAll(['buildingId', 'title', 'description', 'status', 'createdBy', 'housingCompanyId', 'createdAt', 'updatedAt']);
+      
+      // Update: ONLY through Cloud Functions (admin/maintenance)
+      // This prevents residents from changing status or other fields
+      allow update: if false;
+      
+      // Delete: ONLY through Cloud Functions (admin)
+      allow delete: if false;
+    }
+    
+    // ========== ANNOUNCEMENTS ==========
+    match /announcements/{announcementId} {
+      // Read: authenticated users can read announcements from their housing company
+      allow read: if isAuthenticated() 
+        && resource.data.housingCompanyId == getUserHousingCompanyId();
+      
+      // Create: ONLY through Cloud Functions (admin)
+      allow create: if false;
+      
+      // Update: ONLY through Cloud Functions (admin)
+      allow update: if false;
+      
+      // Delete: ONLY through Cloud Functions (admin)
+      allow delete: if false;
+    }
+    
+    // ========== USER PROFILES ==========
+    match /users/{userId} {
+      // Read: users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Create: ONLY through Cloud Functions (during signup)
+      allow create: if false;
+      
+      // Update: users can update their own profile (limited fields)
+      // Cannot change role, housingCompanyId, or createdAt
+      allow update: if isAuthenticated() 
+        && request.auth.uid == userId
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'housingCompanyId', 'createdAt', 'email']));
+      
+      // Delete: ONLY through Cloud Functions (admin)
+      allow delete: if false;
+    }
+    
+    // Deny all other collections by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

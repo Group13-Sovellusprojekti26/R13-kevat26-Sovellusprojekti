@@ -61,6 +61,9 @@ npm run deploy
 
 ```
 /
+├── firestore.rules               # Firestore Security Rules
+├── firestore.indexes.json        # Firestore-indeksit
+├── firebase.json                 # Firebase-konfiguraatio
 ├── src/                          # Sovelluksen lähdekoodi
 │   ├── app/                      # Sovellustason konfiguraatiot
 │   │   ├── navigation/           # Navigaattorit (stack, tabs)
@@ -136,6 +139,51 @@ npm run start        # Käynnistä dev-server
 npm run start:clean  # Tyhjennä cache ja käynnistä
 ```
 
+## Firebase Backend -arkkitehtuuri
+
+TaloFix käyttää **Security Rules + Cloud Functions** -hybridimallia:
+- 📖 **Yksinkertainen luku/kirjoitus** → Suora Firestore + Security Rules (nopea, halpa)
+- 🔐 **Privilegoidut operaatiot** → Cloud Functions (admin/maintenance-roolit)
+
+### Security Rules
+
+Firestore Security Rules tarjoavat ensimmäisen suojakerroksen:
+- Kaikki kokoelmat (faultReports, announcements, users) suojattu
+- housingCompanyId-rajaus automaattinen
+- Estää luvattoman datan lukemisen ja kirjoittamisen
+
+**Deployaa Security Rules:**
+```bash
+firebase deploy --only firestore:rules
+```
+
+### Cloud Functions
+
+Vain privilegoidut operaatiot toteutetaan funktioina:
+- `updateFaultReportStatus` (admin/maintenance)
+- `publishAnnouncement` (admin)
+- `deleteAnnouncement` (admin)
+- `createUserProfileFn` (käyttäjän luonti)
+
+**Kehitys:**
+```bash
+cd functions
+npm run lint          # Tarkista virheet
+npm run lint -- --fix # Korjaa automaattisesti
+npm run build         # Käännä TypeScript
+```
+
+**Deployaa funktiot:**
+```bash
+cd functions
+npm run deploy
+```
+
+Tai deployaa kaikki (rules + functions) kerralla:
+```bash
+firebase deploy
+```
+
 ## GitHub Copilot -ohjeistus
 
 Tässä projektissa käytetään yhteistä GitHub Copilot -ohjeistustiedostoa:
@@ -152,4 +200,5 @@ Copilot on ohjeistettu muun muassa:
 - välttämään rakenteellisia oikopolkuja ja päällekkäistä koodia
 
 Jos jokin muutos on ristiriidassa näiden sääntöjen kanssa, se käsitellään tiimin kesken ennen toteutusta.
+
 

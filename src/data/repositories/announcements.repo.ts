@@ -1,121 +1,103 @@
+import { httpsCallable } from 'firebase/functions';
 import { 
   collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
   query, 
   where, 
-  orderBy,
-  Timestamp,
+  orderBy, 
+  getDocs, 
+  getDoc, 
+  doc,
+  Timestamp 
 } from 'firebase/firestore';
-import { db } from '../firebase/firebase';
+import { functions, db } from '../firebase/firebase';
 import { Announcement, CreateAnnouncementInput } from '../models/Announcement';
+import { getCurrentUser } from '../../features/auth/services/auth.service';
 
-const COLLECTION_NAME = 'announcements';
+// Convert Firestore Timestamp to Date
+const timestampToDate = (timestamp: Timestamp | undefined): Date | undefined => {
+  return timestamp instanceof Timestamp ? timestamp.toDate() : undefined;
+};
+
+// Map Firestore document to Announcement
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mapAnnouncement = (id: string, data: any): Announcement => ({
+  id,
+  buildingId: data.buildingId || data.audienceBuildingId || '',
+  authorId: data.createdBy || data.authorId,
+  authorName: data.authorName || '',
+  type: data.type,
+  title: data.title,
+  content: data.content,
+  imageUrls: data.imageUrls || [],
+  createdAt: timestampToDate(data.createdAt) as Date,
+  updatedAt: timestampToDate(data.updatedAt) || timestampToDate(data.createdAt) as Date,
+  expiresAt: timestampToDate(data.expiresAt),
+  isPinned: data.isPinned || false,
+});
 
 /**
- * Get all announcements for a specific building
+ * Get all announcements for a specific building (direct Firestore access)
  */
 export async function getAnnouncementsByBuilding(buildingId: string): Promise<Announcement[]> {
-  try {
-    const q = query(
-      collection(db, COLLECTION_NAME),
-      where('buildingId', '==', buildingId),
-      orderBy('isPinned', 'desc'),
-      orderBy('createdAt', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    const now = new Date();
-    
-    // Filter out expired announcements
-    return snapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-        expiresAt: doc.data().expiresAt?.toDate(),
-      }))
-      .filter(announcement => 
-        !announcement.expiresAt || announcement.expiresAt > now
-      ) as Announcement[];
-  } catch (error) {
-    console.error('Error fetching announcements:', error);
-    throw error;
-  }
+  const user = getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const q = query(
+    collection(db, 'announcements'),
+    orderBy('createdAt', 'desc')
+  );
+
+  const snapshot = await getDocs(q);
+  
+  // Filter client-side for building-specific announcements
+  // (announcements with no audienceBuildingId are for all buildings)
+  return snapshot.docs
+    .map(doc => mapAnnouncement(doc.id, doc.data()))
+    .filter(a => !a.buildingId || a.buildingId === buildingId);
 }
 
 /**
- * Get a single announcement by ID
+ * Get a single announcement by ID (direct Firestore access)
  */
 export async function getAnnouncementById(id: string): Promise<Announcement | null> {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    const docSnap = await getDoc(docRef);
-    
-    if (!docSnap.exists()) {
-      return null;
-    }
-    
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      ...data,
-      createdAt: data.createdAt?.toDate(),
-      updatedAt: data.updatedAt?.toDate(),
-      expiresAt: data.expiresAt?.toDate(),
-    } as Announcement;
-  } catch (error) {
-    console.error('Error fetching announcement:', error);
-    throw error;
+  const user = getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const docRef = doc(db, 'announcements', id);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return null;
   }
+
+  return mapAnnouncement(docSnap.id, docSnap.data());
 }
 
 /**
- * Create a new announcement
+ * Create a new announcement (via Cloud Function - admin only)
  */
 export async function createAnnouncement(
-  authorId: string,
-  authorName: string,
   input: CreateAnnouncementInput
 ): Promise<string> {
-  try {
-    const now = Timestamp.now();
-    const docRef = await addDoc(collection(db, COLLECTION_NAME), {
-      ...input,
-      authorId,
-      authorName,
-      isPinned: input.isPinned || false,
-      createdAt: now,
-      updatedAt: now,
-      expiresAt: input.expiresAt ? Timestamp.fromDate(input.expiresAt) : null,
-    });
-    
-    return docRef.id;
-  } catch (error) {
-    console.error('Error creating announcement:', error);
-    throw error;
-  }
+  const fn = httpsCallable<
+    { title: string; content: string; audienceBuildingId?: string },
+    { id: string }
+  >(functions, 'publishAnnouncement');
+  const res = await fn({
+    title: input.title,
+    content: input.content,
+    audienceBuildingId: input.buildingId,
+  });
+  return res.data.id;
 }
 
 /**
- * Update announcement
+ * Delete announcement (via Cloud Function - admin only)
  */
-export async function updateAnnouncement(
-  id: string,
-  updates: Partial<CreateAnnouncementInput>
-): Promise<void> {
-  try {
-    const docRef = doc(db, COLLECTION_NAME, id);
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: Timestamp.now(),
-    });
-  } catch (error) {
-    console.error('Error updating announcement:', error);
-    throw error;
-  }
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const fn = httpsCallable<{ announcementId: string }, { ok: boolean }>(
+    functions,
+    'deleteAnnouncement'
+  );
+  await fn({ announcementId: id });
 }

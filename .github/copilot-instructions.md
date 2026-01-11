@@ -59,8 +59,12 @@ src/features/feature-name/
 - Do NOT use firebase/analytics.
 - Firebase configuration must come from environment variables.
 - No hardcoded Firebase keys in source code.
-- Repositories handle Firestore, Auth, Storage, and httpsCallable.
-- Cloud Functions are treated as an external backend.
+- Repositories handle Firestore (direct access), Auth, Storage, and httpsCallable (Cloud Functions).
+- **Security Rules + Cloud Functions hybrid approach:**
+  - Simple read/write operations → direct Firestore + Security Rules
+  - Privileged operations (admin/maintenance only) → Cloud Functions
+  - Security Rules provide the first layer of defense
+  - Cloud Functions handle complex business logic and role-based operations
 
 ## User and Role Model
 - Each user has a Firestore profile at users/{uid}.
@@ -98,6 +102,63 @@ src/features/feature-name/
 - Feature folders must not duplicate shared logic.
 - If a piece of code is reused, move it to shared immediately.
 - Shared components must be generic and not feature-specific.
+
+## Firebase Cloud Functions Usage (IMPORTANT)
+
+TaloFix uses a **Security Rules + Cloud Functions hybrid approach** for optimal performance and security.
+
+### When to use Security Rules (Direct Firestore Access)
+Use direct Firestore operations in repositories when:
+- Simple read operations (get fault reports, announcements, user profile)
+- Simple create operations that don't require role checks (create fault report)
+- Operations where Security Rules can fully enforce permissions and data integrity
+- No sensitive business logic or third-party integrations needed
+
+### When to use Cloud Functions
+Use Cloud Functions via httpsCallable when:
+- **Role-based operations:** Status updates requiring admin/maintenance roles
+- **Privileged operations:** Publishing/deleting announcements (admin only)
+- **Complex business logic:** Multi-document transactions, data aggregation
+- **Third-party integrations:** Payment processing, email sending, external APIs
+- **Background processing:** Image processing, batch operations, scheduled tasks
+
+**Example:** `updateFaultReportStatus` is a Function because only admin/maintenance can change status.
+
+### Implementation Pattern
+
+Repositories combine both approaches:
+```typescript
+// Direct Firestore for simple reads
+export async function getFaultReportsByUser(): Promise<FaultReport[]> {
+  const q = query(
+    collection(db, 'faultReports'),
+    where('createdBy', '==', user.uid),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => mapFaultReport(doc.id, doc.data()));
+}
+
+// Cloud Function for privileged operations
+export async function updateFaultReportStatus(id: string, status: string): Promise<void> {
+  const fn = httpsCallable(functions, 'updateFaultReportStatus');
+  await fn({ faultReportId: id, status });
+}
+```
+
+### Security Rules Structure
+All Firestore collections have Security Rules defined in `firestore.rules`:
+- `faultReports`: Read (authenticated + housingCompanyId match), Create (authenticated), Update/Delete (Functions only)
+- `announcements`: Read (authenticated + housingCompanyId match), Create/Update/Delete (Functions only)
+- `users`: Read (own profile), Create (Functions only), Update (own profile, limited fields), Delete (Functions only)
+
+### Critical Rules
+- UI components and ViewModels must NEVER access Firebase directly
+- Repositories are the ONLY layer that accesses Firestore or calls Cloud Functions
+- Security Rules must be deployed alongside Functions for proper security
+- All privileged operations MUST go through Cloud Functions for role validation
+
+If a requested change bypasses these rules, it must be discussed with the team before implementation.
 
 ## Expo Usage Rules
 - Expo is allowed and expected.
