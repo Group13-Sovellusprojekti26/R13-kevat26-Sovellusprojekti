@@ -1,0 +1,36 @@
+{
+  "auth": {
+    "loginTitle": "Sign In",
+    "email": "Email",
+    "password": "Password",
+    "login": "Login",
+    "loginError": "Login failed",
+    "emailRequired": "Email is required",
+    "emailInvalid": "Invalid email address",
+    "passwordRequired": "Password is required",
+    "passwordMinLength": "Password must be at least 6 characters"
+  },
+  "faults": {
+    "title": "Fault Reports",
+    "createTitle": "New Fault Report",
+    "description": "Description",
+    "location": "Location",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "urgent": "Urgent",
+    "urgency": "Urgency",
+    "descriptionRequired": "Description is required",
+    "locationRequired": "Location is required",
+    "titleRequired": "Title is required",
+    "createSuccess": "Fault report submitted",
+    "createError": "Failed to submit fault report",
+    "noReports": "No fault reports"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
+}

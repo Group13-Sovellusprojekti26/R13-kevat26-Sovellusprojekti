@@ -1,0 +1,36 @@
+{
+  "auth": {
+    "loginTitle": "Kirjaudu sisään",
+    "email": "Sähköposti",
+    "password": "Salasana",
+    "login": "Kirjaudu",
+    "loginError": "Kirjautuminen epäonnistui",
+    "emailRequired": "Sähköposti on pakollinen",
+    "emailInvalid": "Virheellinen sähköpostiosoite",
+    "passwordRequired": "Salasana on pakollinen",
+    "passwordMinLength": "Salasanan tulee olla vähintään 6 merkkiä"
+  },
+  "faults": {
+    "title": "Vikailmoitukset",
+    "createTitle": "Uusi vikailmoitus",
+    "description": "Kuvaus",
+    "location": "Sijainti",
+    "submit": "Lähetä",
+    "cancel": "Peruuta",
+    "urgent": "Kiireellinen",
+    "urgency": "Kiireellisyys",
+    "descriptionRequired": "Kuvaus on pakollinen",
+    "locationRequired": "Sijainti on pakollinen",
+    "titleRequired": "Otsikko on pakollinen",
+    "createSuccess": "Vikailmoitus lähetetty",
+    "createError": "Vikailmoituksen lähetys epäonnistui",
+    "noReports": "Ei vikailmoituksia"
+  },
+  "common": {
+    "loading": "Ladataan...",
+    "error": "Virhe",
+    "retry": "Yritä uudelleen",
+    "cancel": "Peruuta",
+    "save": "Tallenna"
+  }
+}
