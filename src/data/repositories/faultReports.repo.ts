@@ -64,8 +64,23 @@ export async function getFaultReportsByUser(): Promise<FaultReport[]> {
   const user = getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
+  
+  const userDocRef = doc(db, 'users', user.uid);
+  const userDoc = await getDoc(userDocRef);
+
+  if (!userDoc.exists()) {
+    throw new Error('User profile not found');
+  }
+
+  const { housingCompanyId } = userDoc.data();
+  if (!housingCompanyId) {
+    throw new Error('Housing company ID missing');
+  }
+
+  
   const q = query(
     collection(db, 'faultReports'),
+    where('housingCompanyId', '==', housingCompanyId),
     where('createdBy', '==', user.uid),
     orderBy('createdAt', 'desc')
   );
@@ -73,6 +88,7 @@ export async function getFaultReportsByUser(): Promise<FaultReport[]> {
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => mapFaultReport(doc.id, doc.data()));
 }
+
 
 /**
  * Get a single fault report by ID (direct Firestore access)
