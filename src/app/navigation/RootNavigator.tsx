@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../../data/firebase/firebase';
 import { AuthNavigator } from './AuthNavigator';
 import { ResidentTabs } from './ResidentTabs';
+import { ResidentStack } from './ResidentStack';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -40,7 +41,7 @@ export const RootNavigator: React.FC = () => {
       }}
     >
       {isSignedIn ? (
-        <Stack.Screen name="Main" component={ResidentTabs} />
+        <Stack.Screen name="Main" component={ResidentStack} />
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />
       )}

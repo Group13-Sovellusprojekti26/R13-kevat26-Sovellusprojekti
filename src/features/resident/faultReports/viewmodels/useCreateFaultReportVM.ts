@@ -30,26 +30,29 @@ export const useCreateFaultReportVM = create<CreateFaultReportVM>((set) => ({
   success: false,
 
   // Actions
-  submitReport: async (input: CreateFaultReportInput) => {
-    const user = getCurrentUser();
-    if (!user) {
-      set({ error: 'User not authenticated' });
-      return false;
-    }
+submitReport: async (input) => {
+  const user = getCurrentUser();
+  if (!user) {
+    set({ error: 'User not authenticated' });
+    return false;
+  }
 
-    set({ loading: true, error: null, success: false });
+  set({ loading: true, error: null, success: false });
 
-    try {
-      await createFaultReport(user.uid, input);
-      set({ loading: false, error: null, success: true });
-      return true;
-    } catch (error: any) {
-      const errorMessage = parseFirebaseError(error);
-      logError(error, 'Create Fault Report');
-      set({ loading: false, error: errorMessage, success: false });
-      return false;
-    }
-  },
+  try {
+    await createFaultReport(input); // imageUris идут внутри input
+    set({ loading: false, success: true });
+    return true;
+  } catch (error: any) {
+    set({
+      loading: false,
+      error: parseFirebaseError(error),
+      success: false,
+    });
+    return false;
+  }
+},
+
 
   clearError: () => set({ error: null }),
 
