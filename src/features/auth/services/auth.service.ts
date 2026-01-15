@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../../../data/firebase/firebase';
 import { LoginCredentials } from '../types/auth.types';
+import { AppError, logError } from '../../../shared/utils/errors';
 
 /**
  * Sign in with email and password
@@ -19,9 +20,9 @@ export async function signIn(credentials: LoginCredentials): Promise<UserCredent
       credentials.password
     );
     return userCredential;
-  } catch (error) {
-    console.error('Sign in error:', error);
-    throw error;
+  } catch (error: any) {
+    logError(error, 'Sign in');
+    throw new AppError('auth.loginError', error?.code, error);
   }
 }
 
@@ -36,9 +37,9 @@ export async function signUp(credentials: LoginCredentials): Promise<UserCredent
       credentials.password
     );
     return userCredential;
-  } catch (error) {
-    console.error('Sign up error:', error);
-    throw error;
+  } catch (error: any) {
+    logError(error, 'Sign up');
+    throw new AppError('auth.signupError', error?.code, error);
   }
 }
 
@@ -48,9 +49,9 @@ export async function signUp(credentials: LoginCredentials): Promise<UserCredent
 export async function signOut(): Promise<void> {
   try {
     await firebaseSignOut(auth);
-  } catch (error) {
-    console.error('Sign out error:', error);
-    throw error;
+  } catch (error: any) {
+    logError(error, 'Sign out');
+    throw new AppError('auth.signoutError', error?.code, error);
   }
 }
 

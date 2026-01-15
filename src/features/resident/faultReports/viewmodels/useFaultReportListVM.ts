@@ -34,14 +34,14 @@ export const useFaultReportListVM = create<FaultReportListVM>((set, get) => ({
   loadReports: async () => {
     const user = getCurrentUser();
     if (!user) {
-      set({ error: 'User not authenticated' });
+      set({ error: 'Please sign in to view your fault reports.' });
       return;
     }
 
     set({ loading: true, error: null });
 
     try {
-      const reports = await getFaultReportsByUser(user.uid);
+      const reports = await getFaultReportsByUser(); // No argument
       set({ reports, loading: false, error: null });
     } catch (error: any) {
       const errorMessage = parseFirebaseError(error);

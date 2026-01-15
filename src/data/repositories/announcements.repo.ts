@@ -1,46 +1,74 @@
+import { AppError } from '../../shared/utils/errors';
 import { httpsCallable } from 'firebase/functions';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs, 
-  getDoc, 
+import {
+  collection,
+  query,
+  orderBy,
+  getDocs,
+  getDoc,
   doc,
-  Timestamp 
+  Timestamp,
 } from 'firebase/firestore';
 import { functions, db } from '../firebase/firebase';
 import { Announcement, CreateAnnouncementInput } from '../models/Announcement';
+import { AnnouncementType } from '../models/enums';
 import { getCurrentUser } from '../../features/auth/services/auth.service';
-
-// Convert Firestore Timestamp to Date
-const timestampToDate = (timestamp: Timestamp | undefined): Date | undefined => {
-  return timestamp instanceof Timestamp ? timestamp.toDate() : undefined;
-};
+import { timestampToDate } from '../../shared/utils/firebase';
 
 // Map Firestore document to Announcement
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mapAnnouncement = (id: string, data: any): Announcement => ({
-  id,
-  buildingId: data.buildingId || data.audienceBuildingId || '',
-  authorId: data.createdBy || data.authorId,
-  authorName: data.authorName || '',
-  type: data.type,
-  title: data.title,
-  content: data.content,
-  imageUrls: data.imageUrls || [],
-  createdAt: timestampToDate(data.createdAt) as Date,
-  updatedAt: timestampToDate(data.updatedAt) || timestampToDate(data.createdAt) as Date,
-  expiresAt: timestampToDate(data.expiresAt),
-  isPinned: data.isPinned || false,
-});
+// Firestore Announcement data type
+interface FirestoreAnnouncementData {
+  buildingId?: string;
+  audienceBuildingId?: string;
+  createdBy?: string;
+  authorId?: string;
+  authorName?: string;
+  type: AnnouncementType | string;
+  title: string;
+  content: string;
+  imageUrls?: string[];
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+  expiresAt?: Timestamp;
+  isPinned?: boolean;
+}
+
+const isAnnouncementType = (value: string): value is AnnouncementType =>
+  Object.values(AnnouncementType).includes(value as AnnouncementType);
+
+const mapAnnouncement = (id: string, data: FirestoreAnnouncementData): Announcement => {
+  if (!data.createdAt || !data.title || !data.content || !data.type) {
+    throw new AppError('announcements.missingRequiredFields', 'missing-fields');
+  }
+
+  const type = isAnnouncementType(data.type as string)
+    ? (data.type as AnnouncementType)
+    : AnnouncementType.GENERAL;
+
+  return {
+    id,
+    buildingId: data.buildingId || data.audienceBuildingId || '',
+    authorId: data.createdBy || data.authorId || '',
+    authorName: data.authorName || '',
+    type,
+    title: data.title,
+    content: data.content,
+    imageUrls: data.imageUrls || [],
+    createdAt: timestampToDate(data.createdAt) as Date,
+    updatedAt: data.updatedAt ? timestampToDate(data.updatedAt) as Date : timestampToDate(data.createdAt) as Date,
+    expiresAt: data.expiresAt ? timestampToDate(data.expiresAt) : undefined,
+    isPinned: data.isPinned || false,
+  };
+};
 
 /**
  * Get all announcements for a specific building (direct Firestore access)
  */
 export async function getAnnouncementsByBuilding(buildingId: string): Promise<Announcement[]> {
   const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
+  if (!user) {
+    throw new AppError('auth.loginRequired', 'auth/not-authenticated');
+  }
 
   const q = query(
     collection(db, 'announcements'),
@@ -52,7 +80,7 @@ export async function getAnnouncementsByBuilding(buildingId: string): Promise<An
   // Filter client-side for building-specific announcements
   // (announcements with no audienceBuildingId are for all buildings)
   return snapshot.docs
-    .map(doc => mapAnnouncement(doc.id, doc.data()))
+    .map(docSnap => mapAnnouncement(docSnap.id, docSnap.data() as FirestoreAnnouncementData))
     .filter(a => !a.buildingId || a.buildingId === buildingId);
 }
 
@@ -61,7 +89,9 @@ export async function getAnnouncementsByBuilding(buildingId: string): Promise<An
  */
 export async function getAnnouncementById(id: string): Promise<Announcement | null> {
   const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
+  if (!user) {
+    throw new AppError('auth.loginRequired', 'auth/not-authenticated');
+  }
 
   const docRef = doc(db, 'announcements', id);
   const docSnap = await getDoc(docRef);
@@ -70,7 +100,7 @@ export async function getAnnouncementById(id: string): Promise<Announcement | nu
     return null;
   }
 
-  return mapAnnouncement(docSnap.id, docSnap.data());
+  return mapAnnouncement(docSnap.id, docSnap.data() as FirestoreAnnouncementData);
 }
 
 /**
