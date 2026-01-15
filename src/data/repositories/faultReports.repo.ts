@@ -1,165 +1,185 @@
 import { httpsCallable } from 'firebase/functions';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs, 
-  getDoc, 
-  doc, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+  getDoc,
+  doc,
   addDoc,
+  updateDoc,
   serverTimestamp,
-  Timestamp 
+  Timestamp,
 } from 'firebase/firestore';
-import { functions, db } from '../firebase/firebase';
-import { FaultReport, CreateFaultReportInput } from '../models/FaultReport';
-import { FaultReportStatus } from '../models/enums';
-import { getCurrentUser } from '../../features/auth/services/auth.service';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// Convert Firestore Timestamp to Date
-const timestampToDate = (timestamp: Timestamp | undefined): Date | undefined => {
-  return timestamp instanceof Timestamp ? timestamp.toDate() : undefined;
+import { AppError, logError } from '../../shared/utils/errors';
+import { timestampToDate } from '../../shared/utils/firebase';
+import { functions, db, storage } from '../firebase/firebase';
+import { FaultReport, CreateFaultReportInput } from '../models/FaultReport';
+import { FaultReportStatus, UrgencyLevel } from '../models/enums';
+import { getCurrentUser } from '../../features/auth/services/auth.service';
+import { getUserProfile } from './users.repo';
+
+interface FirestoreFaultReportData {
+  createdBy: string;
+  buildingId: string;
+  housingCompanyId: string;
+  apartmentNumber?: string;
+  title: string;
+  description: string;
+  location?: string;
+  status: FaultReportStatus;
+  urgency: UrgencyLevel;
+  imageUrls?: string[];
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+  resolvedAt?: Timestamp;
+  assignedTo?: string;
+}
+
+const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport => {
+  if (
+    !data.createdAt ||
+    !data.createdBy ||
+    !data.buildingId ||
+    !data.title ||
+    !data.description ||
+    !data.status ||
+    !data.urgency
+  ) {
+    throw new AppError('faults.missingRequiredFields', 'fault-report/missing-fields');
+  }
+
+  const createdAt = timestampToDate(data.createdAt);
+  if (!createdAt) {
+    throw new AppError('faults.invalidTimestamps', 'fault-report/invalid-timestamps');
+  }
+
+  const updatedAt = data.updatedAt ? timestampToDate(data.updatedAt) : createdAt;
+  const resolvedAt = data.resolvedAt ? timestampToDate(data.resolvedAt) : undefined;
+
+  return {
+    id,
+    userId: data.createdBy,
+    buildingId: data.buildingId,
+    apartmentNumber: data.apartmentNumber ?? undefined,
+    title: data.title,
+    description: data.description,
+    location: data.location ?? '',
+    status: data.status,
+    urgency: data.urgency,
+    imageUrls: data.imageUrls ?? [],
+    createdAt,
+    updatedAt: updatedAt ?? createdAt,
+    resolvedAt,
+    assignedTo: data.assignedTo,
+  };
 };
 
-// Map Firestore document to FaultReport
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mapFaultReport = (id: string, data: any): FaultReport => ({
-  id,
-  userId: data.createdBy || data.userId,
-  buildingId: data.buildingId,
-  apartmentNumber: data.apartmentNumber,
-  title: data.title,
-  description: data.description,
-  location: data.location || '',
-  status: data.status,
-  urgency: data.urgency,
-  imageUrls: data.images || data.imageUrls || [],
-  createdAt: timestampToDate(data.createdAt) as Date,
-  updatedAt: timestampToDate(data.updatedAt) as Date,
-  resolvedAt: timestampToDate(data.resolvedAt),
-  assignedTo: data.assignedTo,
-});
-
-/**
- * Get all fault reports for a specific building (direct Firestore access)
- */
-export async function getFaultReportsByBuilding(buildingId: string): Promise<FaultReport[]> {
-  const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const q = query(
-    collection(db, 'faultReports'),
-    where('buildingId', '==', buildingId),
-    orderBy('createdAt', 'desc')
-  );
-
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => mapFaultReport(doc.id, doc.data()));
-}
-
-/**
- * Get fault reports created by the current user (direct Firestore access)
- */
 export async function getFaultReportsByUser(): Promise<FaultReport[]> {
-  const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
-
-  
-  const userDocRef = doc(db, 'users', user.uid);
-  const userDoc = await getDoc(userDocRef);
-
-  if (!userDoc.exists()) {
-    throw new Error('User profile not found');
+  const userProfile = await getUserProfile();
+  if (!userProfile) {
+    throw new AppError('profile.notFound', 'profile/not-found');
   }
 
-  const { housingCompanyId } = userDoc.data();
-  if (!housingCompanyId) {
-    throw new Error('Housing company ID missing');
-  }
-
-  
-  const q = query(
+  const reportsQuery = query(
     collection(db, 'faultReports'),
-    where('housingCompanyId', '==', housingCompanyId),
-    where('createdBy', '==', user.uid),
+    where('createdBy', '==', userProfile.id),
+    where('housingCompanyId', '==', userProfile.housingCompanyId),
     orderBy('createdAt', 'desc')
   );
 
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => mapFaultReport(doc.id, doc.data()));
+  const snapshot = await getDocs(reportsQuery);
+  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
 }
 
+export async function getFaultReportsByBuilding(): Promise<FaultReport[]> {
+  const userProfile = await getUserProfile();
+  if (!userProfile) {
+    throw new AppError('profile.notFound', 'profile/not-found');
+  }
 
-/**
- * Get a single fault report by ID (direct Firestore access)
- */
+  const reportsQuery = query(
+    collection(db, 'faultReports'),
+    where('buildingId', '==', userProfile.buildingId),
+    where('housingCompanyId', '==', userProfile.housingCompanyId),
+    orderBy('createdAt', 'desc')
+  );
+
+  const snapshot = await getDocs(reportsQuery);
+  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+}
+
 export async function getFaultReportById(id: string): Promise<FaultReport | null> {
-  const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const docRef = doc(db, 'faultReports', id);
-  const docSnap = await getDoc(docRef);
-
-  if (!docSnap.exists()) {
+  const snap = await getDoc(doc(db, 'faultReports', id));
+  if (!snap.exists()) {
     return null;
   }
 
-  return mapFaultReport(docSnap.id, docSnap.data());
+  return mapFaultReport(snap.id, snap.data() as FirestoreFaultReportData);
 }
 
-/**
- * Create a new fault report (direct Firestore access)
- * Security Rules enforce housingCompanyId and createdBy
- */
-export async function createFaultReport(
-  input: CreateFaultReportInput
-): Promise<string> {
+export async function createFaultReport(input: CreateFaultReportInput): Promise<string> {
   const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
-
-  // Get user profile to retrieve housingCompanyId
-  const userDocRef = doc(db, 'users', user.uid);
-  const userDoc = await getDoc(userDocRef);
-  
-  if (!userDoc.exists()) {
-    throw new Error('User profile not found');
+  if (!user) {
+    throw new AppError('auth.loginRequired', 'auth/not-authenticated');
   }
 
-  const userData = userDoc.data();
-  const housingCompanyId = userData.housingCompanyId;
-
-  if (!housingCompanyId) {
-    throw new Error('Housing company ID not found');
+  const userProfile = await getUserProfile();
+  if (!userProfile) {
+    throw new AppError('profile.notFound', 'profile/not-found');
   }
 
   const docRef = await addDoc(collection(db, 'faultReports'), {
-    housingCompanyId,
-    buildingId: input.buildingId,
-    apartmentNumber: input.apartmentNumber || null,
     title: input.title,
     description: input.description,
-    location: input.location || '',
+    location: input.location ?? '',
     urgency: input.urgency,
-    images: input.imageUrls || [],
-    status: 'open',
-    createdBy: user.uid,
+    apartmentNumber: input.apartmentNumber ?? null,
+    buildingId: userProfile.buildingId,
+    housingCompanyId: userProfile.housingCompanyId,
+    createdBy: userProfile.id,
+    status: FaultReportStatus.OPEN,
+    imageUrls: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
+  if (input.imageUris?.length) {
+    const urls = await uploadImages(input.imageUris, docRef.id);
+    await updateDoc(docRef, {
+      imageUrls: urls,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
   return docRef.id;
 }
 
-/**
- * Update fault report status (via Cloud Function - admin/maintenance only)
- */
-export async function updateFaultReportStatus(
-  id: string, 
-  status: FaultReportStatus
-): Promise<void> {
-  const fn = httpsCallable<{ faultReportId: string; status: FaultReportStatus; comment?: string }>(
-    functions,
-    'updateFaultReportStatus'
-  );
-  await fn({ faultReportId: id, status });
+export async function updateFaultReportStatus(id: string, status: FaultReportStatus): Promise<void> {
+  const callable = httpsCallable<
+    { faultReportId: string; status: FaultReportStatus; comment?: string },
+    { ok: boolean }
+  >(functions, 'updateFaultReportStatus');
+
+  await callable({ faultReportId: id, status });
+}
+
+async function uploadImages(uris: string[], reportId: string): Promise<string[]> {
+  const uploads = uris.map(async (uri, index) => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const imageRef = ref(storage, `faultReports/${reportId}/image_${index}.jpg`);
+      await uploadBytes(imageRef, blob);
+      return await getDownloadURL(imageRef);
+    } catch (error: unknown) {
+      logError(error, 'Upload fault report image');
+      throw new AppError('faults.imageUploadFailed', 'fault-report/image-upload-failed');
+    }
+  });
+
+  return Promise.all(uploads);
 }

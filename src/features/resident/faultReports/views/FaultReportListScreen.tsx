@@ -5,6 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../../../shared/components/Screen';
 import { useFaultReportListVM } from '../viewmodels/useFaultReportListVM';
 import { FaultReport } from '../../../../data/models/FaultReport';
+import { Image, ScrollView, Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { SkeletonCard } from '../../../../shared/components/SkeletonCard';
+import { EmptyState } from '../../../../shared/components/EmptyState';
+
 
 /**
  * Fault Report List Screen
@@ -13,6 +18,8 @@ import { FaultReport } from '../../../../data/models/FaultReport';
 export const FaultReportListScreen: React.FC = () => {
   const { t } = useTranslation();
   const { reports, loading, error, refreshing, loadReports, refresh } = useFaultReportListVM();
+  const navigation = useNavigation<any>();
+
 
   useEffect(() => {
     loadReports();
@@ -28,6 +35,32 @@ export const FaultReportListScreen: React.FC = () => {
           </Chip>
         </View>
         <Text style={styles.description}>{item.description}</Text>
+        {(item.imageUrls ?? []).length > 0 && (
+  <ScrollView horizontal style={{ marginBottom: 8 }}>
+    {(item.imageUrls ?? []).map((uri, index) => (
+      <Pressable
+        key={index}
+        onPress={() =>
+          navigation.navigate('ImagePreview', {
+            images: item.imageUrls ?? [],
+            index,
+          })
+        }
+        style={{ marginRight: 8 }}
+      >
+        <Image
+          source={{ uri }}
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: 6,
+          }}
+        />
+      </Pressable>
+    ))}
+  </ScrollView>
+)}
+
         <View style={styles.footer}>
           <Text style={styles.location}>{item.location}</Text>
           <Chip 
@@ -54,25 +87,38 @@ export const FaultReportListScreen: React.FC = () => {
       </Screen>
     );
   }
+if (loading) {
+  return (
+    <Screen>
+      <View style={{ padding: 16 }}>
+        {[1, 2, 3].map(i => (
+          <SkeletonCard key={i} />
+        ))}
+      </View>
+    </Screen>
+  );
+}
+
+
+
 
   return (
     <Screen>
-      <FlatList
-        data={reports}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
-        }
-        ListEmptyComponent={
-          loading ? null : (
-            <View style={styles.centerContainer}>
-              <Text>{t('faults.noReports')}</Text>
-            </View>
-          )
-        }
-      />
+  <FlatList
+  data={reports}
+  renderItem={renderItem}
+  keyExtractor={(item) => item.id}
+  contentContainerStyle={styles.listContent}
+  refreshControl={
+    <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+  }
+  ListEmptyComponent={
+    <EmptyState
+      onCreate={() => navigation.navigate('CreateFaultReport')}
+    />
+  }
+/>
+
     </Screen>
   );
 };

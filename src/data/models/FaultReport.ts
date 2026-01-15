@@ -18,11 +18,11 @@ export interface FaultReport {
 }
 
 export interface CreateFaultReportInput {
-  buildingId: string;
-  apartmentNumber?: string;
   title: string;
   description: string;
   location: string;
   urgency: UrgencyLevel;
-  imageUrls?: string[];
+  apartmentNumber?: string;
+  imageUris?: string[];
 }
+

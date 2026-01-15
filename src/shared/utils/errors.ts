@@ -5,7 +5,7 @@ export class AppError extends Error {
   constructor(
     message: string,
     public code?: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'AppError';
@@ -15,8 +15,13 @@ export class AppError extends Error {
 /**
  * Parse Firebase error to user-friendly message
  */
-export function parseFirebaseError(error: any): string {
-  const errorCode = error?.code || '';
+export function parseFirebaseError(error: unknown): string {
+  if (error instanceof AppError) {
+    return error.message;
+  }
+
+  const firebaseError = error as { code?: string; message?: string };
+  const errorCode = firebaseError?.code || '';
   
   switch (errorCode) {
     case 'auth/invalid-email':
@@ -38,13 +43,13 @@ export function parseFirebaseError(error: any): string {
     case 'not-found':
       return 'The requested resource was not found';
     default:
-      return error?.message || 'An unexpected error occurred';
+      return firebaseError?.message || 'An unexpected error occurred';
   }
 }
 
 /**
  * Log error with context
  */
-export function logError(error: any, context?: string): void {
+export function logError(error: unknown, context?: string): void {
   console.error(`[Error${context ? ` - ${context}` : ''}]:`, error);
 }

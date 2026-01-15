@@ -1,104 +1,58 @@
-import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc, updateDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
-import { functions, db } from '../firebase/firebase';
-import { UserProfile, CreateUserProfileInput, UpdateUserProfileInput } from '../models/UserProfile';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 import { getCurrentUser } from '../../features/auth/services/auth.service';
+import { UserProfile } from '../models/UserProfile';
+import { UserRole } from '../models/enums';
+import { AppError } from '../../shared/utils/errors';
+import { timestampToDate } from '../../shared/utils/firebase';
 
-// Convert Firestore Timestamp to Date
-const timestampToDate = (timestamp: Timestamp | undefined): Date | undefined => {
-  return timestamp instanceof Timestamp ? timestamp.toDate() : undefined;
-};
+// Firestore UserProfile data type
+interface FirestoreUserProfileData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole | string;
+  buildingId: string;
+  housingCompanyId: string;
+  apartmentNumber?: string;
+  phone?: string;
+  photoUrl?: string;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+}
 
-// Map Firestore document to UserProfile
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mapUserProfile = (id: string, data: any): UserProfile => ({
-  id,
-  email: data.email,
-  firstName: data.firstName,
-  lastName: data.lastName,
-  phone: data.phone,
-  role: data.role,
-  buildingId: data.buildingId,
-  apartmentNumber: data.apartmentNumber,
-  photoUrl: data.photoUrl,
-  createdAt: timestampToDate(data.createdAt) as Date,
-  updatedAt: timestampToDate(data.updatedAt) as Date,
-});
+const isUserRole = (role: string): role is UserRole =>
+  Object.values(UserRole).includes(role as UserRole);
 
-/**
- * Get current user's profile (direct Firestore access)
- */
 export async function getUserProfile(): Promise<UserProfile | null> {
   const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
+  if (!user) return null;
 
-  const docRef = doc(db, 'users', user.uid);
-  const docSnap = await getDoc(docRef);
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists()) return null;
 
-  if (!docSnap.exists()) {
-    return null;
+  const d = snap.data() as FirestoreUserProfileData;
+  if (!d.createdAt || !d.email || !d.firstName || !d.lastName || !d.role || !d.buildingId || !d.housingCompanyId) {
+    throw new AppError('profile.invalidData', 'profile/invalid-data');
   }
 
-  return mapUserProfile(docSnap.id, docSnap.data());
-}
+  const role = isUserRole(d.role as string) ? (d.role as UserRole) : null;
+  if (!role) {
+    throw new AppError('profile.invalidRole', 'profile/invalid-role');
+  }
 
-/**
- * Create a new user profile (via Cloud Function - during signup)
- */
-export async function createUserProfile(input: CreateUserProfileInput): Promise<void> {
-  const fn = httpsCallable<
-    {
-      email: string;
-      firstName: string;
-      lastName: string;
-      phone?: string;
-      buildingId?: string;
-      apartmentNumber?: string;
-    },
-    { ok: boolean }
-  >(functions, 'createUserProfileFn');
-  await fn({
-    email: input.email,
-    firstName: input.firstName,
-    lastName: input.lastName,
-    phone: input.phone,
-    buildingId: input.buildingId,
-    apartmentNumber: input.apartmentNumber,
-  });
-}
-
-/**
- * Update user profile (direct Firestore access for allowed fields)
- * Security Rules prevent changing role, housingCompanyId, and email
- */
-export async function updateUserProfile(updates: UpdateUserProfileInput): Promise<void> {
-  const user = getCurrentUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const docRef = doc(db, 'users', user.uid);
-  
-  const updateData: Record<string, unknown> = {
-    updatedAt: serverTimestamp(),
+  return {
+    id: user.uid,
+    email: d.email,
+    firstName: d.firstName,
+    lastName: d.lastName,
+    role,
+    buildingId: d.buildingId,
+    housingCompanyId: d.housingCompanyId,
+    apartmentNumber: d.apartmentNumber,
+    phone: d.phone,
+    photoUrl: d.photoUrl,
+    createdAt: timestampToDate(d.createdAt)!,
+    updatedAt: d.updatedAt ? timestampToDate(d.updatedAt)! : timestampToDate(d.createdAt)!,
   };
-
-  if (updates.firstName !== undefined) updateData.firstName = updates.firstName;
-  if (updates.lastName !== undefined) updateData.lastName = updates.lastName;
-  if (updates.phone !== undefined) updateData.phone = updates.phone;
-  if (updates.apartmentNumber !== undefined) updateData.apartmentNumber = updates.apartmentNumber;
-  if (updates.photoUrl !== undefined) updateData.photoUrl = updates.photoUrl;
-
-  await updateDoc(docRef, updateData);
-}
-
-/**
- * Check if user profile exists (direct Firestore access)
- */
-export async function userProfileExists(): Promise<boolean> {
-  const user = getCurrentUser();
-  if (!user) return false;
-
-  const docRef = doc(db, 'users', user.uid);
-  const docSnap = await getDoc(docRef);
-  
-  return docSnap.exists();
 }
