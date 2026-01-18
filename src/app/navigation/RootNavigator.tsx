@@ -7,6 +7,8 @@ import { ResidentTabs } from './ResidentTabs';
 import { ResidentStack } from './ResidentStack';
 import { AdminStack } from './AdminStack';
 import { HousingCompanyStack } from './HousingCompanyStack';
+import { MaintenanceStack } from './MaintenanceStack';
+import { ServiceCompanyStack } from './ServiceCompanyStack';
 import { getUserProfile } from '../../data/repositories/users.repo';
 import { UserRole } from '../../data/models/enums';
 import { ActivityIndicator, View } from 'react-native';
@@ -75,7 +77,13 @@ export const RootNavigator: React.FC = () => {
     if (userRole === UserRole.HOUSING_COMPANY) {
       return <Stack.Screen name="Main" component={HousingCompanyStack} />;
     }
-    // Default to resident stack for all other roles (resident, maintenance)
+    if (userRole === UserRole.MAINTENANCE) {
+      return <Stack.Screen name="Main" component={MaintenanceStack} />;
+    }
+    if (userRole === UserRole.SERVICE_COMPANY) {
+      return <Stack.Screen name="Main" component={ServiceCompanyStack} />;
+    }
+    // Default to resident stack for resident role
     return <Stack.Screen name="Main" component={ResidentStack} />;
   };
 

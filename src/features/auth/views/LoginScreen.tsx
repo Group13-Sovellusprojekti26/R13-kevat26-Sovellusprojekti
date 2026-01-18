@@ -68,6 +68,16 @@ export const LoginScreen: React.FC = () => {
     navigation.navigate('ResidentInviteCode');
   };
 
+  const handleManagementInvite = () => {
+    setShowInviteModal(false);
+    navigation.navigate('ManagementInviteCode');
+  };
+
+  const handleServiceCompanyInvite = () => {
+    setShowInviteModal(false);
+    navigation.navigate('ServiceCompanyInviteCode');
+  };
+
   return (
     <Screen scrollable>
       <View style={styles.container}>
@@ -186,10 +196,28 @@ export const LoginScreen: React.FC = () => {
             />
 
             <TFButton
+              title={t('auth.managementInvite')}
+              onPress={handleManagementInvite}
+              icon="briefcase-account"
+              mode="contained"
+              fullWidth
+              style={styles.modalButton}
+            />
+
+            <TFButton
+              title={t('auth.serviceCompanyInvite')}
+              onPress={handleServiceCompanyInvite}
+              icon="tools"
+              mode="contained"
+              fullWidth
+              style={styles.modalButton}
+            />
+
+            <TFButton
               title={t('auth.companyInvite')}
               onPress={handleCompanyInvite}
               icon="office-building"
-              mode="outlined"
+              mode="contained"
               fullWidth
               style={styles.modalButton}
             />

@@ -21,7 +21,7 @@
     "residentInviteCode": "Resident Invite Code",
     "residentInviteCodeMinLength": "Resident invite code must be at least 8 characters",
     "selectInviteType": "Select Invite Type",
-    "selectInviteTypeSubtitle": "Are you a resident or housing company?",
+    "selectInviteTypeSubtitle": "Select which type of invite you received.",
     "residentInvite": "Resident Invite",
     "companyInvite": "Company Invite",
     "yourApartment": "Your Apartment",
@@ -46,7 +46,24 @@
     "phone": "Phone Number",
     "registrationSuccess": "Registration Successful",
     "registrationCompleteMessage": "Your account has been created successfully! You can now log in.",
-    "welcomeHousingCompany": "Welcome {{name}}! You can now log in."
+    "welcomeHousingCompany": "Welcome {{name}}! You can now log in.",
+    "managementInvite": "Property Manager Invite",
+    "enterManagementInviteCode": "Enter Property Manager Invite Code",
+    "managementInviteCodeSubtitle": "Enter the property manager invite code you received from the housing company",
+    "managementInviteCode": "Property Manager Invite Code",
+    "createManagementAccount": "Create Property Manager Account",
+    "managingThisCompany": "You will manage this housing company",
+    "personalInfo": "Personal Information",
+    "managementCompanyName": "Property Management Company Name",
+    "managementRegistrationComplete": "Welcome to TaloFix! You can now log in as a property manager.",
+    "serviceCompanyInvite": "Service Company Invite",
+    "enterServiceCompanyInviteCode": "Enter Service Company Invite Code",
+    "serviceCompanyInviteCodeSubtitle": "Enter the service company invite code you received from the housing company",
+    "serviceCompanyInviteCode": "Service Company Invite Code",
+    "createServiceCompanyAccount": "Create Service Company Account",
+    "servicingThisCompany": "You will service this housing company",
+    "serviceCompanyName": "Service Company Name",
+    "serviceCompanyRegistrationComplete": "Welcome to TaloFix! You can now log in as a service company."
   },
   "faults": {
     "title": "Fault Reports",
@@ -73,9 +90,11 @@
     "ok": "OK",
     "share": "Share",
     "delete": "Delete",
+    "remove": "Remove",
     "back": "Back",
     "logout": "Log out",
-    "copied": "Copied to clipboard"
+    "copied": "Copied to clipboard",
+    "success": "Success"
   },
   "admin": {
     "dashboard": {
@@ -140,7 +159,7 @@
       "title": "Housing Company Dashboard",
       "subtitle": "Welcome to TaloFix",
       "welcome": "Welcome!",
-      "welcomeMessage": "Housing company management view is coming soon. From here you can manage fault reports, announcements and residents.",
+      "welcomeMessage": "From here you can manage fault reports, announcements and residents.",
       "faultReports": "Fault Reports",
       "announcements": "Announcements",
       "manageFaults": "Manage Fault Reports",
@@ -185,6 +204,72 @@
       "deleteInviteMessage": "This action will permanently delete the apartment and all related data. If a resident has registered for this apartment, their account and fault reports will also be deleted. This action cannot be undone.",
       "inviteDeletedSuccess": "Apartment deleted successfully",
       "deleteError": "Failed to delete apartment"
+    },
+    "management": {
+      "inviteManager": "Invite Property Manager",
+      "createInviteCode": "Create Management Invite",
+      "inviteManagerSubtitle": "Create an invite code for property manager. Only one property manager can exist at a time.",
+      "generateNewCode": "Generate New Code",
+      "generateNewCodeDescription": "Create an invite code for property manager. You can only create one at a time.",
+      "generateCode": "Generate Invite Code",
+      "inviteCodeGenerated": "Invite Code Created",
+      "managementInviteCode": "Property Manager Invite Code",
+      "shareInviteCode": "Share Invite Code",
+      "inviteCodeMessage": "Welcome to TaloFix! Use the invite code below to register as property manager.",
+      "inviteCodeInstructions": "Open the TaloFix app and select 'Join with Invite Code'. Enter the code: {{code}}",
+      "inviteCodeInfo": "The invite code is valid for 7 days. Share it with the property manager.",
+      "codeCopied": "Invite code copied!",
+      "generateError": "Failed to create invite code",
+      "current": "Current Property Manager",
+      "getError": "Failed to fetch property manager information",
+      "removeError": "Failed to remove property manager",
+      "confirmRemove": "Remove Property Manager",
+      "confirmRemoveMessage": "Are you sure you want to remove the property manager? This will delete their account and all invites.",
+      "removeSuccess": "Property manager removed successfully"
+    },
+    "serviceCompany": {
+      "inviteServiceCompany": "Invite Service Company",
+      "createInviteCode": "Create Service Company Invite",
+      "inviteServiceCompanySubtitle": "Create an invite code for service company. Only one service company can exist at a time.",
+      "generateNewCode": "Generate New Code",
+      "generateNewCodeDescription": "Create an invite code for service company. You can only create one at a time.",
+      "generateCode": "Generate Invite Code",
+      "inviteCodeGenerated": "Invite Code Created",
+      "serviceCompanyInviteCode": "Service Company Invite Code",
+      "shareInviteCode": "Share Invite Code",
+      "inviteCodeMessage": "Welcome to TaloFix! Use the invite code below to register as service company.",
+      "inviteCodeInstructions": "Open the TaloFix app and select 'Join with Invite Code'. Enter the code: {{code}}",
+      "inviteCodeInfo": "The invite code is valid for 7 days. Share it with the service company.",
+      "codeCopied": "Invite code copied!",
+      "generateError": "Failed to create invite code",
+      "current": "Current Service Company",
+      "getError": "Failed to fetch service company information",
+      "removeError": "Failed to remove service company",
+      "confirmRemove": "Remove Service Company",
+      "confirmRemoveMessage": "Are you sure you want to remove the service company? This will delete their account and all invites.",
+      "removeSuccess": "Service company removed successfully"
     }
+  },
+  "maintenance": {
+    "dashboard": {
+      "title": "Property Management",
+      "subtitle": "Welcome to TaloFix",
+      "welcome": "Welcome!",
+      "welcomeMessage": "From here you can manage fault reports and announcements.",
+      "yourInfo": "Your Information",
+      "name": "Name",
+      "companyName": "Company",
+      "openFaults": "Open Fault Reports",
+      "completedFaults": "Completed Fault Reports"
+    }
+  },
+  "serviceCompany": {
+    "dashboard": "Service Company",
+    "welcomeBack": "Welcome back",
+    "dashboardSubtitle": "From here you can manage fault reports",
+    "yourInfo": "Your Information",
+    "statistics": "Statistics",
+    "openFaults": "Open Fault Reports",
+    "completedFaults": "Completed Fault Reports"
   }
 }

@@ -5,11 +5,19 @@ import { InviteCodeScreen } from '../../features/auth/views/InviteCodeScreen';
 import { RegisterWithInviteScreen } from '../../features/auth/views/RegisterWithInviteScreen';
 import { ResidentInviteCodeScreen } from '../../features/auth/views/ResidentInviteCodeScreen';
 import { RegisterAsResidentScreen } from '../../features/auth/views/RegisterAsResidentScreen';
+import { InviteTypeSelectionScreen } from '../../features/auth/views/InviteTypeSelectionScreen';
+import { ManagementInviteCodeScreen } from '../../features/auth/views/ManagementInviteCodeScreen';
+import { RegisterAsManagementScreen } from '../../features/auth/views/RegisterAsManagementScreen';
+import { ServiceCompanyInviteCodeScreen } from '../../features/auth/views/ServiceCompanyInviteCodeScreen';
+import { RegisterAsServiceCompanyScreen } from '../../features/auth/views/RegisterAsServiceCompanyScreen';
 import { ValidatedInviteData } from '../../data/models/HousingCompany';
 import { ValidatedResidentInviteData } from '../../data/repositories/residentInvites.repo';
+import { ValidatedManagementInviteData } from '../../data/repositories/managementInvites.repo';
+import { ValidatedServiceCompanyInviteData } from '../../data/repositories/serviceCompanyInvites.repo';
 
 export type AuthStackParamList = {
   Login: undefined;
+  InviteTypeSelection: undefined;
   InviteCode: undefined;
   RegisterWithInvite: {
     inviteCode: string;
@@ -19,6 +27,16 @@ export type AuthStackParamList = {
   RegisterAsResident: {
     inviteCode: string;
     residentData: ValidatedResidentInviteData;
+  };
+  ManagementInviteCode: undefined;
+  RegisterAsManagement: {
+    inviteCode: string;
+    managementData: ValidatedManagementInviteData;
+  };
+  ServiceCompanyInviteCode: undefined;
+  RegisterAsServiceCompany: {
+    inviteCode: string;
+    serviceCompanyData: ValidatedServiceCompanyInviteData;
   };
 };
 
@@ -40,6 +58,10 @@ export const AuthNavigator: React.FC = () => {
         component={LoginScreen}
       />
       <Stack.Screen 
+        name="InviteTypeSelection" 
+        component={InviteTypeSelectionScreen}
+      />
+      <Stack.Screen 
         name="InviteCode" 
         component={InviteCodeScreen}
       />
@@ -54,6 +76,22 @@ export const AuthNavigator: React.FC = () => {
       <Stack.Screen 
         name="RegisterAsResident" 
         component={RegisterAsResidentScreen}
+      />
+      <Stack.Screen 
+        name="ManagementInviteCode" 
+        component={ManagementInviteCodeScreen}
+      />
+      <Stack.Screen 
+        name="RegisterAsManagement" 
+        component={RegisterAsManagementScreen}
+      />
+      <Stack.Screen 
+        name="ServiceCompanyInviteCode" 
+        component={ServiceCompanyInviteCodeScreen}
+      />
+      <Stack.Screen 
+        name="RegisterAsServiceCompany" 
+        component={RegisterAsServiceCompanyScreen}
       />
     </Stack.Navigator>
   );

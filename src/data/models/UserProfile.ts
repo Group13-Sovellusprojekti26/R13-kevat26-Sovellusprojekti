@@ -18,6 +18,7 @@ export interface UserProfile {
   apartmentNumber?: string;
   phone?: string;
   photoUrl?: string;
+  companyName?: string; // For maintenance and service company users
 
   createdAt: Date;
   updatedAt: Date;

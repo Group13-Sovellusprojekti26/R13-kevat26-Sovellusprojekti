@@ -23,7 +23,7 @@
     "residentInviteCode": "Asukaskutsukoodi",
     "residentInviteCodeMinLength": "Asukaskutsukoodin tulee olla vähintään 8 merkkiä",
     "selectInviteType": "Valitse kutsukoodin tyyppi",
-    "selectInviteTypeSubtitle": "Oletko asukas vai taloyhtiö?",
+    "selectInviteTypeSubtitle": "Valitse, minkä tyyppisen kutsun sait.",
     "residentInvite": "Asukaskutsu",
     "companyInvite": "Taloyhtiön kutsu",
     "yourApartment": "Asuntosi tiedot",
@@ -48,7 +48,24 @@
     "phone": "Puhelinnumero",
     "registrationSuccess": "Rekisteröinti onnistui",
     "registrationCompleteMessage": "Tilisi on luotu onnistuneesti! Voit nyt kirjautua sisään.",
-    "welcomeHousingCompany": "Tervetuloa {{name}}! Voit nyt kirjautua sisään."
+    "welcomeHousingCompany": "Tervetuloa {{name}}! Voit nyt kirjautua sisään.",
+    "managementInvite": "Isännöitsijän kutsu",
+    "enterManagementInviteCode": "Syötä isännöitsijän kutsukoodi",
+    "managementInviteCodeSubtitle": "Syötä taloyhtiöltä saamasi isännöitsijän kutsukoodi",
+    "managementInviteCode": "Isännöitsijän kutsukoodi",
+    "createManagementAccount": "Luo isännöitsijän tili",
+    "managingThisCompany": "Isännöit tätä taloyhtiötä",
+    "personalInfo": "Henkilötiedot",
+    "managementCompanyName": "Isännöintiyrityksen nimi",
+    "managementRegistrationComplete": "Tervetuloa TaloFix-palveluun! Voit nyt kirjautua sisään isännöitsijänä.",
+    "serviceCompanyInvite": "Huoltoyhtiön kutsu",
+    "enterServiceCompanyInviteCode": "Syötä huoltoyhtiön kutsukoodi",
+    "serviceCompanyInviteCodeSubtitle": "Syötä taloyhtiöltä saamasi huoltoyhtiön kutsukoodi",
+    "serviceCompanyInviteCode": "Huoltoyhtiön kutsukoodi",
+    "createServiceCompanyAccount": "Luo huoltoyhtiön tili",
+    "servicingThisCompany": "Huollat tätä taloyhtiötä",
+    "serviceCompanyName": "Huoltoyhtiön nimi",
+    "serviceCompanyRegistrationComplete": "Tervetuloa TaloFix-palveluun! Voit nyt kirjautua sisään huoltoyhtiönä."
   },
   "faults": {
     "title": "Vikailmoitukset",
@@ -75,9 +92,11 @@
     "ok": "OK",
     "share": "Jaa",
     "delete": "Poista",
+    "remove": "Poista",
     "back": "Takaisin",
     "logout": "Kirjaudu ulos",
-    "copied": "Kopioitu leikepöydälle"
+    "copied": "Kopioitu leikepöydälle",
+    "success": "Onnistui"
   },
   "admin": {
     "dashboard": {
@@ -142,7 +161,7 @@
       "title": "Taloyhtiön hallinta",
       "subtitle": "Tervetuloa TaloFix-palveluun",
       "welcome": "Tervetuloa!",
-      "welcomeMessage": "Taloyhtiön hallintanäkymä on tulossa pian. Täältä voit hallita vikailmoituksia, tiedotteita ja asukkaita.",
+      "welcomeMessage": "Täältä voit hallita vikailmoituksia, tiedotteita ja asukkaita.",
       "faultReports": "Vikailmoitukset",
       "announcements": "Tiedotteet",
       "manageFaults": "Hallinnoi vikailmoituksia",
@@ -187,6 +206,72 @@
       "deleteInviteMessage": "Tämä toiminto poistaa asunnon ja kaikki siihen liittyvät tiedot pysyvästi. Jos asuntoon on rekisteröitynyt asukas, myös asukkaan tili ja vikailmoitukset poistetaan. Tätä toimintoa ei voi perua.",
       "inviteDeletedSuccess": "Asunto poistettu onnistuneesti",
       "deleteError": "Asunnon poistaminen epäonnistui"
+    },
+    "management": {
+      "inviteManager": "Kutsu isännöitsijä",
+      "createInviteCode": "Luo isännöitsijän kutsu",
+      "inviteManagerSubtitle": "Luo kutsukoodi isännöitsijälle. Vain yksi isännöitsijä voi olla kerrallaan.",
+      "generateNewCode": "Luo uusi kutsukoodi",
+      "generateNewCodeDescription": "Luo kutsukoodi isännöitsijälle. Voit luoda vain yhden kerrallaan.",
+      "generateCode": "Luo kutsukoodi",
+      "inviteCodeGenerated": "Kutsukoodi luotu",
+      "managementInviteCode": "Isännöitsijän kutsukoodi",
+      "shareInviteCode": "Jaa kutsukoodi",
+      "inviteCodeMessage": "Tervetuloa TaloFix-palveluun! Käytä alla olevaa kutsukoodia rekisteröityäksesi isännöitsijäksi.",
+      "inviteCodeInstructions": "Avaa TaloFix-sovellus ja valitse 'Liity kutsukoodilla'. Syötä koodi: {{code}}",
+      "inviteCodeInfo": "Kutsukoodi on voimassa 7 päivää. Jaa se isännöitsijälle.",
+      "codeCopied": "Kutsukoodi kopioitu!",
+      "generateError": "Kutsukoodin luominen epäonnistui",
+      "current": "Nykyinen isännöitsijä",
+      "getError": "Isännöitsijän tietojen haku epäonnistui",
+      "removeError": "Isännöitsijän poisto epäonnistui",
+      "confirmRemove": "Poista isännöitsijä",
+      "confirmRemoveMessage": "Haluatko varmasti poistaa isännöitsijän? Tämä poistaa käyttäjätilin ja kaikki kutsut.",
+      "removeSuccess": "Isännöitsijä poistettu onnistuneesti"
+    },
+    "serviceCompany": {
+      "inviteServiceCompany": "Kutsu huoltoyhtiö",
+      "createInviteCode": "Luo huoltoyhtiön kutsu",
+      "inviteServiceCompanySubtitle": "Luo kutsukoodi huoltoyhtiölle. Vain yksi huoltoyhtiö voi olla kerrallaan.",
+      "generateNewCode": "Luo uusi kutsukoodi",
+      "generateNewCodeDescription": "Luo kutsukoodi huoltoyhtiölle. Voit luoda vain yhden kerrallaan.",
+      "generateCode": "Luo kutsukoodi",
+      "inviteCodeGenerated": "Kutsukoodi luotu",
+      "serviceCompanyInviteCode": "Huoltoyhtiön kutsukoodi",
+      "shareInviteCode": "Jaa kutsukoodi",
+      "inviteCodeMessage": "Tervetuloa TaloFix-palveluun! Käytä alla olevaa kutsukoodia rekisteröityäksesi huoltoyhtiöksi.",
+      "inviteCodeInstructions": "Avaa TaloFix-sovellus ja valitse 'Liity kutsukoodilla'. Syötä koodi: {{code}}",
+      "inviteCodeInfo": "Kutsukoodi on voimassa 7 päivää. Jaa se huoltoyhtiölle.",
+      "codeCopied": "Kutsukoodi kopioitu!",
+      "generateError": "Kutsukoodin luominen epäonnistui",
+      "current": "Nykyinen huoltoyhtiö",
+      "getError": "Huoltoyhtiön tietojen haku epäonnistui",
+      "removeError": "Huoltoyhtiön poisto epäonnistui",
+      "confirmRemove": "Poista huoltoyhtiö",
+      "confirmRemoveMessage": "Haluatko varmasti poistaa huoltoyhtiön? Tämä poistaa käyttäjätilin ja kaikki kutsut.",
+      "removeSuccess": "Huoltoyhtiö poistettu onnistuneesti"
     }
+  },
+  "maintenance": {
+    "dashboard": {
+      "title": "Isännöinnin hallinta",
+      "subtitle": "Tervetuloa TaloFix-palveluun",
+      "welcome": "Tervetuloa!",
+      "welcomeMessage": "Täältä voit hallita vikailmoituksia ja tiedotteita.",
+      "yourInfo": "Tietosi",
+      "name": "Nimi",
+      "companyName": "Yritys",
+      "openFaults": "Avoimet vikailmoitukset",
+      "completedFaults": "Valmiit vikailmoitukset"
+    }
+  },
+  "serviceCompany": {
+    "dashboard": "Huoltoyhtiö",
+    "welcomeBack": "Tervetuloa takaisin",
+    "dashboardSubtitle": "Täältä voit hallita vikailmoituksia",
+    "yourInfo": "Tietosi",
+    "statistics": "Tilastot",
+    "openFaults": "Avoimet vikailmoitukset",
+    "completedFaults": "Valmiit vikailmoitukset"
   }
 }

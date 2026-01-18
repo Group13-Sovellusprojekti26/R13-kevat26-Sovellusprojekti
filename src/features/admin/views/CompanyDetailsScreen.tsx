@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Share, Alert, Pressable } from 'react-native';
-import { Text, Card, Divider, ActivityIndicator, Chip } from 'react-native-paper';
+import { Text, Card, Divider, ActivityIndicator, Chip, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { Screen } from '../../../shared/components/Screen';
@@ -186,9 +186,17 @@ export const CompanyDetailsScreen: React.FC = () => {
                 {t('admin.currentInviteCode')}
               </Text>
               <Pressable onLongPress={() => copyInviteCode(company.inviteCode!)} android_ripple={{ color: '#eee' }}>
-                <Text variant="headlineMedium" style={styles.inviteCode}>
-                  {company.inviteCode}
-                </Text>
+                <View style={styles.codeContainer}>
+                  <Text variant="headlineMedium" style={[styles.inviteCode, { flex: 1 }] }>
+                    {company.inviteCode}
+                  </Text>
+                  <IconButton
+                    icon="content-copy"
+                    size={20}
+                    onPress={() => copyInviteCode(company.inviteCode!)}
+                    accessibilityLabel={t('housingCompany.residents.copyCode')}
+                  />
+                </View>
               </Pressable>
               {company.inviteCodeExpiresAt && (
                 <Text 
@@ -317,6 +325,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 2,
     marginBottom: 8,
+  },
+  codeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   expiresAt: {
     opacity: 0.7,

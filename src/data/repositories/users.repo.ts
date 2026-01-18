@@ -41,11 +41,15 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     throw new AppError('profile.invalidRole', 'profile/invalid-role');
   }
 
-  // Admin and housing_company don't need buildingId
+  // Admin, housing_company, maintenance and service_company don't need buildingId
   // Housing company role doesn't need buildingId as they manage the whole company
+  // Maintenance (property manager) doesn't have a specific building
+  // Service company doesn't have a specific building
   if (
     role !== UserRole.ADMIN && 
     role !== UserRole.HOUSING_COMPANY && 
+    role !== UserRole.MAINTENANCE &&
+    role !== UserRole.SERVICE_COMPANY &&
     !d.buildingId
   ) {
     throw new AppError('profile.invalidData', 'profile/invalid-data');

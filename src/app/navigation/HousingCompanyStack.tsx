@@ -3,12 +3,16 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { HousingCompanyDashboardScreen } from '@/features/housingCompany/views/HousingCompanyDashboardScreen';
 import { CreateResidentInviteScreen } from '@/features/housingCompany/views/CreateResidentInviteScreen';
+import { CreateManagementInviteScreen } from '@/features/housingCompany/views/CreateManagementInviteScreen';
+import { CreateServiceCompanyInviteScreen } from '@/features/housingCompany/views/CreateServiceCompanyInviteScreen';
 import { ResidentListScreen } from '@/features/housingCompany/views/ResidentListScreen';
 import { BuildingResidentsScreen } from '@/features/housingCompany/views/BuildingResidentsScreen';
 
 export type HousingCompanyStackParamList = {
   Dashboard: undefined;
   CreateResidentInvite: undefined;
+  CreateManagementInvite: undefined;
+  CreateServiceCompanyInvite: undefined;
   ResidentList: undefined;
   BuildingResidents: { buildingId: string };
 };
@@ -37,6 +41,22 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('housingCompany.residents.createInviteCode'),
+        }}
+      />
+      <Stack.Screen 
+        name="CreateManagementInvite" 
+        component={CreateManagementInviteScreen}
+        options={{
+          headerShown: true,
+          title: t('housingCompany.management.createInviteCode'),
+        }}
+      />
+      <Stack.Screen 
+        name="CreateServiceCompanyInvite" 
+        component={CreateServiceCompanyInviteScreen}
+        options={{
+          headerShown: true,
+          title: t('housingCompany.serviceCompany.createInviteCode'),
         }}
       />
       <Stack.Screen 

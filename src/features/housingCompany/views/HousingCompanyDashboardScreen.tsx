@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Text, Surface, useTheme, Divider, IconButton } from 'react-native-paper';
+import { Text, Surface, useTheme, Divider, IconButton, Card } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { Screen } from '../../../shared/components/Screen';
 import { TFButton } from '../../../shared/components/TFButton';
 import { signOut } from '../../auth/services/auth.service';
 import { useAuthVM } from '../../auth/viewmodels/useAuthVM';
+import { useHousingCompanyVM } from '../viewmodels/useHousingCompanyVM';
 import { HousingCompanyStackParamList } from '../../../app/navigation/HousingCompanyStack';
 
 type NavigationProp = NativeStackNavigationProp<HousingCompanyStackParamList>;
@@ -21,6 +22,19 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuthVM();
+  const { 
+    managementUser, 
+    serviceCompanyUser, 
+    loadManagementUser, 
+    loadServiceCompanyUser,
+    removeManagementUser: removeManagementUserAction,
+    removeServiceCompanyUser: removeServiceCompanyUserAction,
+  } = useHousingCompanyVM();
+
+  useEffect(() => {
+    loadManagementUser();
+    loadServiceCompanyUser();
+  }, [loadManagementUser, loadServiceCompanyUser]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -37,8 +51,52 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
     );
   };
 
+  const handleRemoveManagement = () => {
+    Alert.alert(
+      t('housingCompany.management.confirmRemove'),
+      t('housingCompany.management.confirmRemoveMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { 
+          text: t('common.remove'), 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeManagementUserAction();
+              Alert.alert(t('common.success'), t('housingCompany.management.removeSuccess'));
+            } catch (error: any) {
+              Alert.alert(t('common.error'), error?.message || t('housingCompany.management.removeError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRemoveServiceCompany = () => {
+    Alert.alert(
+      t('housingCompany.serviceCompany.confirmRemove'),
+      t('housingCompany.serviceCompany.confirmRemoveMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        { 
+          text: t('common.remove'), 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeServiceCompanyUserAction();
+              Alert.alert(t('common.success'), t('housingCompany.serviceCompany.removeSuccess'));
+            } catch (error: any) {
+              Alert.alert(t('common.error'), error?.message || t('housingCompany.serviceCompany.removeError'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <Screen>
+    <Screen scrollable>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
@@ -63,6 +121,72 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
         </View>
 
         <Divider style={styles.divider} />
+
+        {/* Management User Card */}
+        {managementUser?.exists && managementUser.user && (
+          <Card style={styles.partnerCard}>
+            <Card.Content>
+              <View style={styles.partnerHeader}>
+                <Text variant="titleMedium" style={styles.partnerTitle}>
+                  {t('housingCompany.management.current')}
+                </Text>
+                <IconButton
+                  icon="delete"
+                  size={20}
+                  iconColor={theme.colors.error}
+                  onPress={handleRemoveManagement}
+                />
+              </View>
+              <Text variant="bodyLarge">{managementUser.user.firstName} {managementUser.user.lastName}</Text>
+              {managementUser.user.companyName && (
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {managementUser.user.companyName}
+                </Text>
+              )}
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {managementUser.user.email}
+              </Text>
+              {managementUser.user.phone && (
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {managementUser.user.phone}
+                </Text>
+              )}
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* Service Company User Card */}
+        {serviceCompanyUser?.exists && serviceCompanyUser.user && (
+          <Card style={styles.partnerCard}>
+            <Card.Content>
+              <View style={styles.partnerHeader}>
+                <Text variant="titleMedium" style={styles.partnerTitle}>
+                  {t('housingCompany.serviceCompany.current')}
+                </Text>
+                <IconButton
+                  icon="delete"
+                  size={20}
+                  iconColor={theme.colors.error}
+                  onPress={handleRemoveServiceCompany}
+                />
+              </View>
+              <Text variant="bodyLarge">{serviceCompanyUser.user.firstName} {serviceCompanyUser.user.lastName}</Text>
+              {serviceCompanyUser.user.companyName && (
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {serviceCompanyUser.user.companyName}
+                </Text>
+              )}
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                {serviceCompanyUser.user.email}
+              </Text>
+              {serviceCompanyUser.user.phone && (
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  {serviceCompanyUser.user.phone}
+                </Text>
+              )}
+            </Card.Content>
+          </Card>
+        )}
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
@@ -109,6 +233,26 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
             fullWidth
             style={styles.actionButton}
           />
+          {!managementUser?.exists && (
+            <TFButton
+              title={t('housingCompany.management.inviteManager')}
+              onPress={() => navigation.navigate('CreateManagementInvite')}
+              icon="briefcase-plus"
+              mode="outlined"
+              fullWidth
+              style={styles.actionButton}
+            />
+          )}
+          {!serviceCompanyUser?.exists && (
+            <TFButton
+              title={t('housingCompany.serviceCompany.inviteServiceCompany')}
+              onPress={() => navigation.navigate('CreateServiceCompanyInvite')}
+              icon="tools"
+              mode="outlined"
+              fullWidth
+              style={styles.actionButton}
+            />
+          )}
           <TFButton
             title={t('housingCompany.dashboard.manageFaults')}
             onPress={() => {}}
@@ -202,5 +346,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   actionButton: {
+  },
+  partnerCard: {
+    marginBottom: 16,
+  },
+  partnerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  partnerTitle: {
+    fontWeight: '600',
   },
 });
