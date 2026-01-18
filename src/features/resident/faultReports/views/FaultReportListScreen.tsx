@@ -125,7 +125,6 @@ if (loading) {
 
 const styles = StyleSheet.create({
   listContent: {
-    padding: 16,
   },
   card: {
     marginBottom: 16,

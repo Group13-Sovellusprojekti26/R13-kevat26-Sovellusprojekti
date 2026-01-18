@@ -20,6 +20,7 @@ export const auth: Auth = getAuth(app);
 
 export const db: Firestore = getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);
-export const functions: Functions = getFunctions(app);
+// Functions are deployed to europe-west1 region
+export const functions: Functions = getFunctions(app, 'europe-west1');
 
 export default app;

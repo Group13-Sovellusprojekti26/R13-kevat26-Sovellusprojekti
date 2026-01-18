@@ -18,6 +18,8 @@ export enum UrgencyLevel {
 export enum UserRole {
   RESIDENT = 'resident',
   PROPERTY_MANAGER = 'property_manager',
+  MAINTENANCE = 'maintenance',
+  HOUSING_COMPANY = 'housing_company',
   ADMIN = 'admin',
 }
 

@@ -32,7 +32,7 @@ export async function getUserProfile(): Promise<UserProfile | null> {
   if (!snap.exists()) return null;
 
   const d = snap.data() as FirestoreUserProfileData;
-  if (!d.createdAt || !d.email || !d.firstName || !d.lastName || !d.role || !d.buildingId || !d.housingCompanyId) {
+  if (!d.createdAt || !d.email || !d.firstName || !d.lastName || !d.role) {
     throw new AppError('profile.invalidData', 'profile/invalid-data');
   }
 
@@ -41,14 +41,29 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     throw new AppError('profile.invalidRole', 'profile/invalid-role');
   }
 
+  // Admin and housing_company don't need buildingId
+  // Housing company role doesn't need buildingId as they manage the whole company
+  if (
+    role !== UserRole.ADMIN && 
+    role !== UserRole.HOUSING_COMPANY && 
+    !d.buildingId
+  ) {
+    throw new AppError('profile.invalidData', 'profile/invalid-data');
+  }
+
+  // All non-admin roles need housingCompanyId
+  if (role !== UserRole.ADMIN && !d.housingCompanyId) {
+    throw new AppError('profile.invalidData', 'profile/invalid-data');
+  }
+
   return {
     id: user.uid,
     email: d.email,
     firstName: d.firstName,
     lastName: d.lastName,
     role,
-    buildingId: d.buildingId,
-    housingCompanyId: d.housingCompanyId,
+    buildingId: d.buildingId || '',
+    housingCompanyId: d.housingCompanyId || '',
     apartmentNumber: d.apartmentNumber,
     phone: d.phone,
     photoUrl: d.photoUrl,

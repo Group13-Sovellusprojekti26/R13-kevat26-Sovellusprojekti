@@ -1,12 +1,19 @@
 import {onCall, HttpsError, CallableRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
+import * as sgMail from "@sendgrid/mail";
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
 
 const db = admin.firestore();
 
-type UserRole = "resident" | "admin" | "maintenance";
+// Initialize SendGrid with API key from environment
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
+
+type UserRole = "resident" | "admin" | "maintenance" | "property_manager" | "housing_company";
 
 type UserProfile = {
   housingCompanyId: string;
@@ -29,7 +36,8 @@ const assertAuth = (request: CallableRequest): string => {
 
 /**
  * Fetches user profile from Firestore.
- * Validates that profile contains housingCompanyId and role.
+ * Validates that profile contains role (housingCompanyId for non-admin users).
+ * Admin users don't need housingCompanyId.
  * @param {string} uid - The user ID
  * @return {Promise<UserProfile>} The user profile
  * @throws {HttpsError} If profile not found or incomplete
@@ -40,14 +48,23 @@ const getUserProfile = async (uid: string): Promise<UserProfile> => {
     throw new HttpsError("permission-denied", "User profile not found.");
   }
   const data = snap.data() as Partial<UserProfile>;
-  if (!data?.housingCompanyId || !data?.role) {
+  if (!data?.role) {
     throw new HttpsError(
       "permission-denied",
-      "User profile incomplete."
+      "User profile incomplete: missing role."
     );
   }
+  
+  // Admin doesn't need housingCompanyId
+  if (data.role !== "admin" && !data?.housingCompanyId) {
+    throw new HttpsError(
+      "permission-denied",
+      "User profile incomplete: missing housingCompanyId."
+    );
+  }
+  
   return {
-    housingCompanyId: data.housingCompanyId,
+    housingCompanyId: data.housingCompanyId || "",
     role: data.role,
   };
 };
@@ -251,6 +268,864 @@ export const createUserProfileFn = onCall(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+    return {ok: true};
+  }
+);
+
+// ========== HOUSING COMPANIES ==========
+// Admin can create housing companies and generate invite codes
+
+/**
+ * Creates a new housing company (shell only).
+ * Only accessible by admin role.
+ *
+ * @param {string} name - Company name
+ * @param {string} address - Company address
+ * @param {string} city - City
+ * @param {string} postalCode - Postal code
+ * @returns {string} id - Created housing company ID
+ */
+export const createHousingCompany = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {role} = await getUserProfile(uid);
+    
+    // Only admins can create housing companies
+    if (role !== "admin") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can create housing companies."
+      );
+    }
+
+    const {name, address, city, postalCode} = request.data || {};
+    if (
+      typeof name !== "string" ||
+      typeof address !== "string" ||
+      typeof city !== "string" ||
+      typeof postalCode !== "string"
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    // Create housing company document (without user account yet)
+    const companyRef = db.collection("housingCompanies").doc();
+    await companyRef.set({
+      name,
+      address,
+      city,
+      postalCode,
+      createdByAdminId: uid,
+      isActive: true,
+      isRegistered: false, // Not yet registered by housing company
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {id: companyRef.id};
+  }
+);
+
+/**
+ * Generates an invite code for a housing company.
+ * Only accessible by admin role.
+ * Invite code expires in 7 days.
+ *
+ * @param {string} housingCompanyId - Housing company ID
+ * @returns {string} inviteCode - Generated 8-character invite code
+ * @returns {string} expiresAt - ISO timestamp of expiration
+ */
+export const generateInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {role} = await getUserProfile(uid);
+    
+    // Only admins can generate invite codes
+    if (role !== "admin") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can generate invite codes."
+      );
+    }
+
+    const {housingCompanyId} = request.data || {};
+    if (typeof housingCompanyId !== "string") {
+      throw new HttpsError("invalid-argument", "housingCompanyId required.");
+    }
+
+    const docRef = db.collection("housingCompanies").doc(housingCompanyId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Housing company not found.");
+    }
+
+    // Verify admin created this company
+    const company = snap.data();
+    if (company?.createdByAdminId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Can only generate codes for companies you created."
+      );
+    }
+
+    // Generate random 8-character code
+    const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    
+    // Expires in 7 days
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await docRef.update({
+      inviteCode,
+      inviteCodeExpiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      inviteCode,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+);
+
+/**
+ * Deletes a housing company.
+ * Only accessible by admin role.
+ * Admin can only delete companies they created.
+ *
+ * @param {string} housingCompanyId - Housing company ID
+ * @returns {boolean} ok - Success indicator
+ */
+export const deleteHousingCompany = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {role} = await getUserProfile(uid);
+    
+    // Only admins can delete housing companies
+    if (role !== "admin") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can delete housing companies."
+      );
+    }
+
+    const {housingCompanyId} = request.data || {};
+    if (typeof housingCompanyId !== "string") {
+      throw new HttpsError("invalid-argument", "housingCompanyId required.");
+    }
+
+    const docRef = db.collection("housingCompanies").doc(housingCompanyId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Housing company not found.");
+    }
+
+    // Verify admin created this company
+    const company = snap.data();
+    if (company?.createdByAdminId !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "Can only delete companies you created."
+      );
+    }
+
+    // Delete all residents (invite codes) for this housing company
+    const residentInvitesSnap = await db
+      .collection("residentInvites")
+      .where("housingCompanyId", "==", housingCompanyId)
+      .get();
+
+    // For each resident invite that has been used, delete the resident's account
+    const residentDeletePromises = residentInvitesSnap.docs.map(async (inviteDoc) => {
+      const invite = inviteDoc.data();
+      
+      if (invite.isUsed && invite.usedByUserId) {
+        const userId = invite.usedByUserId;
+        
+        try {
+          // Delete user from Firebase Authentication
+          await admin.auth().deleteUser(userId);
+        } catch (authError: any) {
+          // If user doesn't exist in Auth, continue
+          if (authError.code !== "auth/user-not-found") {
+            console.error(`Failed to delete user ${userId}:`, authError);
+          }
+        }
+
+        // Delete user profile document
+        await db.collection("users").doc(userId).delete();
+        
+        // Delete all fault reports created by this resident
+        const faultReportsSnap = await db
+          .collection("faultReports")
+          .where("createdBy", "==", userId)
+          .get();
+        
+        const faultReportDeletePromises = faultReportsSnap.docs.map((doc) =>
+          doc.ref.delete()
+        );
+        await Promise.all(faultReportDeletePromises);
+      }
+      
+      // Delete the resident invite document
+      await inviteDoc.ref.delete();
+    });
+
+    await Promise.all(residentDeletePromises);
+
+    // If company is registered and has a user account, delete it
+    if (company?.isRegistered && company?.userId) {
+      const userId = company.userId;
+      
+      try {
+        // Delete user from Firebase Authentication
+        await admin.auth().deleteUser(userId);
+      } catch (authError: any) {
+        // If user doesn't exist in Auth, continue (they might have been deleted manually)
+        if (authError.code !== "auth/user-not-found") {
+          throw authError;
+        }
+      }
+
+      // Delete user profile document
+      await db.collection("users").doc(userId).delete();
+    }
+
+    // Delete the housing company document
+    await docRef.delete();
+
+    return {ok: true};
+  }
+);
+
+/**
+ * Validates an invite code and returns housing company details.
+ * This is called BEFORE registration to show pre-filled form.
+ * Does NOT require authentication.
+ *
+ * @param {string} inviteCode - 8-character invite code
+ * @returns Housing company details (name, address, city, postalCode)
+ */
+export const validateInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const {inviteCode} = request.data || {};
+    
+    if (typeof inviteCode !== "string" || inviteCode.length < 6) {
+      throw new HttpsError("invalid-argument", "Invalid invite code format.");
+    }
+
+    // Find housing company by invite code
+    const companySnap = await db
+      .collection("housingCompanies")
+      .where("inviteCode", "==", inviteCode.toUpperCase())
+      .where("isActive", "==", true)
+      .limit(1)
+      .get();
+
+    if (companySnap.empty) {
+      throw new HttpsError("not-found", "Invalid invite code.");
+    }
+
+    const companyDoc = companySnap.docs[0];
+    const company = companyDoc.data();
+
+    // Check if invite code is expired
+    const expiresAt = company.inviteCodeExpiresAt?.toDate();
+    if (!expiresAt || expiresAt < new Date()) {
+      throw new HttpsError("permission-denied", "Invite code has expired.");
+    }
+
+    // Check if already registered
+    if (company.isRegistered) {
+      throw new HttpsError(
+        "already-exists",
+        "This housing company has already been registered."
+      );
+    }
+
+    return {
+      housingCompanyId: companyDoc.id,
+      name: company.name,
+      address: company.address,
+      city: company.city,
+      postalCode: company.postalCode,
+    };
+  }
+);
+
+/**
+ * Registers a housing company with email and password.
+ * Creates Firebase Auth account and user profile.
+ * Does NOT require prior authentication.
+ *
+ * @param {string} inviteCode - 8-character invite code
+ * @param {string} email - Email for login
+ * @param {string} password - Password for login
+ * @param {string} contactPerson - Contact person name
+ * @param {string} phone - Optional phone number
+ * @returns {boolean} ok - Success indicator
+ */
+export const registerWithInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const {inviteCode, email, password, contactPerson, phone} =
+      request.data || {};
+
+    if (
+      typeof inviteCode !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      typeof contactPerson !== "string"
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new HttpsError("invalid-argument", "Invalid email address.");
+    }
+
+    // Validate password
+    if (password.length < 6) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Password must be at least 6 characters."
+      );
+    }
+
+    // Find and validate housing company by invite code
+    const companySnap = await db
+      .collection("housingCompanies")
+      .where("inviteCode", "==", inviteCode.toUpperCase())
+      .where("isActive", "==", true)
+      .limit(1)
+      .get();
+
+    if (companySnap.empty) {
+      throw new HttpsError("not-found", "Invalid invite code.");
+    }
+
+    const companyDoc = companySnap.docs[0];
+    const company = companyDoc.data();
+
+    // Check if invite code is expired
+    const expiresAt = company.inviteCodeExpiresAt?.toDate();
+    if (!expiresAt || expiresAt < new Date()) {
+      throw new HttpsError("permission-denied", "Invite code has expired.");
+    }
+
+    // Check if already registered
+    if (company.isRegistered) {
+      throw new HttpsError(
+        "already-exists",
+        "This housing company has already been registered."
+      );
+    }
+
+    try {
+      // Create Firebase Auth user
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        emailVerified: false,
+      });
+
+      // Create user profile
+      await db
+        .collection("users")
+        .doc(userRecord.uid)
+        .set({
+          email,
+          firstName: contactPerson,
+          lastName: company.name,
+          role: "housing_company",
+          housingCompanyId: companyDoc.id,
+          buildingId: "",
+          phone: typeof phone === "string" ? phone : null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+      // Update housing company as registered
+      await companyDoc.ref.update({
+        isRegistered: true,
+        email,
+        userId: userRecord.uid,
+        contactPerson,
+        phone: typeof phone === "string" ? phone : null,
+        inviteCode: null, // Clear invite code after registration
+        inviteCodeExpiresAt: null,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return {
+        userId: userRecord.uid,
+        housingCompanyId: companyDoc.id,
+      };
+    } catch (error: any) {
+      if (error.code === "auth/email-already-exists") {
+        throw new HttpsError(
+          "already-exists",
+          "This email is already in use."
+        );
+      }
+      throw new HttpsError(
+        "internal",
+        `Registration failed: ${error.message}`
+      );
+    }
+  }
+);
+
+/**
+ * Validates an invite code and creates a user profile with the role.
+ * For residents and maintenance staff joining an existing housing company.
+ * Accessible by authenticated users only.
+ *
+ * @param {string} inviteCode - 8-character invite code
+ * @param {string} role - Role to assign (resident/maintenance)
+ * @param {string} firstName - User first name
+ * @param {string} lastName - User last name
+ * @param {string} email - User email
+ * @param {string} buildingId - Building ID
+ * @param {string} apartmentNumber - Optional apartment number
+ * @param {string} phone - Optional phone number
+ * @returns {boolean} ok - Success indicator
+ * @returns {string} housingCompanyId - Housing company ID
+ */
+export const joinWithInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {
+      inviteCode,
+      role,
+      firstName,
+      lastName,
+      email,
+      buildingId,
+      apartmentNumber,
+      phone,
+    } = request.data || {};
+
+    if (
+      typeof inviteCode !== "string" ||
+      typeof role !== "string" ||
+      typeof firstName !== "string" ||
+      typeof lastName !== "string" ||
+      typeof email !== "string" ||
+      typeof buildingId !== "string"
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    // Validate role (only resident and maintenance can join)
+    const validRoles = ["maintenance", "resident"];
+    if (!validRoles.includes(role)) {
+      throw new HttpsError("invalid-argument", "Invalid role.");
+    }
+
+    // Check if user profile already exists
+    const existingSnap = await db.collection("users").doc(uid).get();
+    if (existingSnap.exists) {
+      throw new HttpsError("already-exists", "User profile already exists.");
+    }
+
+    // Find housing company by invite code
+    const companySnap = await db
+      .collection("housingCompanies")
+      .where("inviteCode", "==", inviteCode.toUpperCase())
+      .get();
+
+    if (companySnap.empty) {
+      throw new HttpsError("not-found", "Invalid or expired invite code.");
+    }
+
+    const companyDoc = companySnap.docs[0];
+    const company = companyDoc.data();
+
+    // Check if invite code is expired
+    const expiresAt = company.inviteCodeExpiresAt?.toDate();
+    if (!expiresAt || expiresAt < new Date()) {
+      throw new HttpsError("permission-denied", "Invite code has expired.");
+    }
+
+    // Create user profile
+    await db
+      .collection("users")
+      .doc(uid)
+      .set({
+        email,
+        firstName,
+        lastName,
+        phone: typeof phone === "string" ? phone : null,
+        buildingId,
+        apartmentNumber:
+          typeof apartmentNumber === "string" ? apartmentNumber : null,
+        role,
+        housingCompanyId: companyDoc.id,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    return {ok: true, housingCompanyId: companyDoc.id};
+  }
+);
+
+// ========== RESIDENT INVITE CODES ==========
+// Housing company can create invite codes for residents
+
+/**
+ * Generates an invite code for a resident.
+ * Only accessible by housing_company role.
+ * Creates invite code with building and apartment info.
+ *
+ * @param {string} buildingId - Building identifier
+ * @param {string} apartmentNumber - Apartment number
+ * @returns {string} inviteCode - Generated 8-character invite code
+ * @returns {string} expiresAt - ISO timestamp of expiration
+ */
+export const generateResidentInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {role, housingCompanyId} = await getUserProfile(uid);
+    
+    // Only housing_company can generate resident invite codes
+    if (role !== "housing_company") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only housing companies can generate resident invite codes."
+      );
+    }
+
+    const {buildingId, apartmentNumber} = request.data || {};
+    if (
+      typeof buildingId !== "string" ||
+      typeof apartmentNumber !== "string" ||
+      !buildingId.trim() ||
+      !apartmentNumber.trim()
+    ) {
+      throw new HttpsError(
+        "invalid-argument",
+        "buildingId and apartmentNumber are required."
+      );
+    }
+
+    // Generate random 8-character code
+    const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    
+    // Expires in 7 days
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    // Create resident invite document
+    const inviteRef = db.collection("residentInvites").doc();
+    await inviteRef.set({
+      inviteCode,
+      housingCompanyId,
+      buildingId: buildingId.trim(),
+      apartmentNumber: apartmentNumber.trim(),
+      createdByUserId: uid,
+      isUsed: false,
+      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {
+      inviteCode,
+      expiresAt: expiresAt.toISOString(),
+      buildingId: buildingId.trim(),
+      apartmentNumber: apartmentNumber.trim(),
+    };
+  }
+);
+
+/**
+ * Validates a resident invite code and returns apartment details.
+ * This is called BEFORE registration to show pre-filled form.
+ * Does NOT require authentication.
+ *
+ * @param {string} inviteCode - 8-character invite code
+ * @returns Apartment details (buildingId, apartmentNumber, housingCompanyId)
+ */
+export const validateResidentInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const {inviteCode} = request.data || {};
+    
+    if (typeof inviteCode !== "string" || inviteCode.length < 6) {
+      throw new HttpsError("invalid-argument", "Invalid invite code format.");
+    }
+
+    // Find resident invite by code
+    const inviteSnap = await db
+      .collection("residentInvites")
+      .where("inviteCode", "==", inviteCode.toUpperCase())
+      .where("isUsed", "==", false)
+      .limit(1)
+      .get();
+
+    if (inviteSnap.empty) {
+      throw new HttpsError("not-found", "Invalid invite code.");
+    }
+
+    const inviteDoc = inviteSnap.docs[0];
+    const invite = inviteDoc.data();
+
+    // Check if invite code is expired
+    const expiresAt = invite.expiresAt?.toDate();
+    if (!expiresAt || expiresAt < new Date()) {
+      throw new HttpsError("permission-denied", "Invite code has expired.");
+    }
+
+    // Get housing company name for display
+    const companySnap = await db
+      .collection("housingCompanies")
+      .doc(invite.housingCompanyId)
+      .get();
+    
+    const companyName = companySnap.exists 
+      ? companySnap.data()?.name 
+      : "Unknown";
+
+    return {
+      inviteId: inviteDoc.id,
+      housingCompanyId: invite.housingCompanyId,
+      housingCompanyName: companyName,
+      buildingId: invite.buildingId,
+      apartmentNumber: invite.apartmentNumber,
+    };
+  }
+);
+
+/**
+ * Gets all resident invite codes for a housing company.
+ * Only accessible by housing_company role.
+ *
+ * @returns Array of invite codes with their status
+ */
+export const getResidentInviteCodes = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {role, housingCompanyId} = await getUserProfile(uid);
+    
+    if (role !== "housing_company") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only housing companies can view resident invite codes."
+      );
+    }
+
+    const invitesSnap = await db
+      .collection("residentInvites")
+      .where("housingCompanyId", "==", housingCompanyId)
+      .orderBy("createdAt", "desc")
+      .limit(50)
+      .get();
+
+    const invites = invitesSnap.docs.map((doc) => {
+      const data = doc.data();
+      const expiresAt = data.expiresAt?.toDate();
+      const isExpired = expiresAt ? expiresAt < new Date() : true;
+      
+      return {
+        id: doc.id,
+        inviteCode: data.inviteCode,
+        buildingId: data.buildingId,
+        apartmentNumber: data.apartmentNumber,
+        isUsed: data.isUsed,
+        isExpired,
+        expiresAt: expiresAt?.toISOString(),
+        createdAt: data.createdAt?.toDate()?.toISOString(),
+      };
+    });
+
+    return {invites};
+  }
+);
+
+/**
+ * Joins with a resident invite code.
+ * Creates Firebase Auth user and user profile with pre-filled apartment info.
+ * Does NOT require authentication (user is created during this call).
+ *
+ * @param {string} inviteCode - 8-character invite code
+ * @param {string} firstName - User first name
+ * @param {string} lastName - User last name  
+ * @param {string} email - User email
+ * @param {string} password - User password for authentication
+ * @param {string} phone - Optional phone number
+ * @returns {boolean} ok - Success indicator
+ * @returns {string} housingCompanyId - Housing company ID
+ */
+export const joinWithResidentInviteCode = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const {
+      inviteCode,
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+    } = request.data || {};
+
+    if (
+      typeof inviteCode !== "string" ||
+      typeof firstName !== "string" ||
+      typeof lastName !== "string" ||
+      typeof email !== "string" ||
+      typeof password !== "string"
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    // Find resident invite by code
+    const inviteSnap = await db
+      .collection("residentInvites")
+      .where("inviteCode", "==", inviteCode.toUpperCase())
+      .where("isUsed", "==", false)
+      .limit(1)
+      .get();
+
+    if (inviteSnap.empty) {
+      throw new HttpsError("not-found", "Invalid or expired invite code.");
+    }
+
+    const inviteDoc = inviteSnap.docs[0];
+    const invite = inviteDoc.data();
+
+    // Check if invite code is expired
+    const expiresAt = invite.expiresAt?.toDate();
+    if (!expiresAt || expiresAt < new Date()) {
+      throw new HttpsError("permission-denied", "Invite code has expired.");
+    }
+
+    // Create Firebase Auth user
+    let userRecord;
+    try {
+      userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: `${firstName} ${lastName}`,
+      });
+    } catch (authError: any) {
+      if (authError.code === "auth/email-already-exists") {
+        throw new HttpsError("already-exists", "Email already in use.");
+      }
+      throw new HttpsError("internal", "Failed to create user account.");
+    }
+
+    const uid = userRecord.uid;
+
+    // Create user profile
+    await db
+      .collection("users")
+      .doc(uid)
+      .set({
+        email,
+        firstName,
+        lastName,
+        phone: typeof phone === "string" ? phone : null,
+        buildingId: invite.buildingId,
+        apartmentNumber: invite.apartmentNumber,
+        role: "resident",
+        housingCompanyId: invite.housingCompanyId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+    // Mark invite as used
+    await inviteDoc.ref.update({
+      isUsed: true,
+      usedByUserId: uid,
+      usedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return {ok: true, housingCompanyId: invite.housingCompanyId};
+  }
+);
+
+/**
+ * Deletes a resident invite and associated user.
+ * Only accessible by housing_company role.
+ * Deletes the invite code and the registered user if exists.
+ *
+ * @param {string} inviteId - Resident invite document ID
+ * @returns {boolean} ok - Success indicator
+ */
+export const deleteResidentInvite = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {role, housingCompanyId} = await getUserProfile(uid);
+    
+    if (role !== "housing_company") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only housing companies can delete resident invites."
+      );
+    }
+
+    const {inviteId} = request.data || {};
+    if (typeof inviteId !== "string") {
+      throw new HttpsError("invalid-argument", "inviteId required.");
+    }
+
+    const docRef = db.collection("residentInvites").doc(inviteId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Resident invite not found.");
+    }
+
+    // Verify invite belongs to this housing company
+    const invite = snap.data();
+    if (invite?.housingCompanyId !== housingCompanyId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Can only delete invites from your housing company."
+      );
+    }
+
+    // If invite was used and has a registered user, delete the user
+    if (invite?.isUsed && invite?.usedByUserId) {
+      const userId = invite.usedByUserId;
+      
+      try {
+        // Delete user from Firebase Authentication
+        await admin.auth().deleteUser(userId);
+      } catch (authError: any) {
+        // If user doesn't exist in Auth, continue
+        if (authError.code !== "auth/user-not-found") {
+          throw authError;
+        }
+      }
+
+      // Delete user profile document
+      await db.collection("users").doc(userId).delete();
+      
+      // Delete all fault reports created by this user
+      const faultReportsSnap = await db
+        .collection("faultReports")
+        .where("createdBy", "==", userId)
+        .get();
+      
+      const faultReportDeletePromises = faultReportsSnap.docs.map((doc) =>
+        doc.ref.delete()
+      );
+      await Promise.all(faultReportDeletePromises);
+    }
+
+    // Delete the resident invite document
+    await docRef.delete();
 
     return {ok: true};
   }

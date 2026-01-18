@@ -99,7 +99,7 @@ const removeImage = (index: number) => {
     }
   };
 
-  // ---------------- SUBMIT (TÄSSÄ) ----------------
+  // ---------------- SUBMIT (HERE) ----------------
 
   const onSubmit = async (data: CreateFaultReportFormData) => {
     clearError();
@@ -240,7 +240,7 @@ const removeImage = (index: number) => {
 // ---------------- STYLES ----------------
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: {},
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24 },
   urgencyContainer: { marginBottom: 16 },
   label: { fontSize: 16, marginBottom: 8, fontWeight: '500' },

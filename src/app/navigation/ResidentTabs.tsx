@@ -2,10 +2,12 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ResidentDashboardScreen } from '../../features/resident/views/ResidentDashboardScreen';
 import { FaultReportListScreen } from '../../features/resident/faultReports/views/FaultReportListScreen';
 import { CreateFaultReportScreen } from '../../features/resident/faultReports/views/CreateFaultReportScreen';
 
 export type ResidentTabsParamList = {
+  Dashboard: undefined;
   FaultReports: undefined;
   CreateFaultReport: undefined;
 };
@@ -25,6 +27,17 @@ export const ResidentTabs: React.FC = () => {
         tabBarInactiveTintColor: '#666',
       }}
     >
+      <Tab.Screen
+        name="Dashboard"
+        component={ResidentDashboardScreen}
+        options={{
+          title: t('resident.dashboard.title'),
+          tabBarLabel: t('resident.dashboard.tabLabel'),
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="home" size={size} color={color} />
+          ),
+        }}
+      />
       <Tab.Screen
         name="FaultReports"
         component={FaultReportListScreen}

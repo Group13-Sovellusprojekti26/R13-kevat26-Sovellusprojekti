@@ -52,6 +52,25 @@ service cloud.firestore {
       allow delete: if false;
     }
     
+    // ========== HOUSING COMPANIES ==========
+    match /housingCompanies/{companyId} {
+      // Read: admins can read companies they created
+      // Users can read their own housing company
+      allow read: if isAuthenticated() && (
+        (isAdmin() && resource.data.createdByAdminId == request.auth.uid) ||
+        resource.id == getUserHousingCompanyId()
+      );
+      
+      // Create: ONLY through Cloud Functions (admin only)
+      allow create: if false;
+      
+      // Update: ONLY through Cloud Functions (admin only, for invite codes)
+      allow update: if false;
+      
+      // Delete: ONLY through Cloud Functions (admin only)
+      allow delete: if false;
+    }
+    
     // ========== ANNOUNCEMENTS ==========
     match /announcements/{announcementId} {
       // Read: authenticated users can read announcements from their housing company
