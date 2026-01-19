@@ -12,11 +12,10 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import { AppError, logError } from '../../shared/utils/errors';
 import { timestampToDate } from '../../shared/utils/firebase';
-import { functions, db, storage } from '../firebase/firebase';
+import { functions, db } from '../firebase/firebase';
 import { FaultReport, CreateFaultReportInput } from '../models/FaultReport';
 import { FaultReportStatus, UrgencyLevel } from '../models/enums';
 import { getCurrentUser } from '../../features/auth/services/auth.service';
@@ -167,14 +166,35 @@ export async function updateFaultReportStatus(id: string, status: FaultReportSta
   await callable({ faultReportId: id, status });
 }
 
-async function uploadImages(uris: string[], reportId: string): Promise<string[]> {
-  const uploads = uris.map(async (uri, index) => {
+async function uploadImages(dataUrls: string[], reportId: string): Promise<string[]> {
+  const uploadCallable = httpsCallable<
+    { faultReportId: string; imageBase64: string; contentType: string; imageIndex: number },
+    { url: string }
+  >(functions, 'uploadFaultReportImage');
+
+  const uploads = dataUrls.map(async (dataUrl, index) => {
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const imageRef = ref(storage, `faultReports/${reportId}/image_${index}.jpg`);
-      await uploadBytes(imageRef, blob);
-      return await getDownloadURL(imageRef);
+      if (!dataUrl.startsWith('data:')) {
+        throw new Error('Image must be provided as data URL');
+      }
+
+      // Parse data URL: data:image/webp;base64,XXXXX
+      const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches) {
+        throw new Error('Invalid data URL format');
+      }
+
+      const contentType = matches[1];
+      const imageBase64 = matches[2];
+
+      const result = await uploadCallable({
+        faultReportId: reportId,
+        imageBase64,
+        contentType,
+        imageIndex: index,
+      });
+
+      return result.data.url;
     } catch (error: unknown) {
       logError(error, 'Upload fault report image');
       throw new AppError('faults.imageUploadFailed', 'fault-report/image-upload-failed');

@@ -49,6 +49,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "residentInvites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "housingCompanyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

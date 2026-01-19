@@ -11,6 +11,17 @@ Maintenance handles fault resolution.
 Backend: Firebase (Auth, Firestore, Storage).
 Architecture: MVVM.
 
+Account roles and hierarchy:
+- **Admin**: top-level operator (app administrators). Can manage housing companies and global settings.
+- **Housing Company**: primary customer account that represents a housing company. Each housing company may have the following linked partner accounts:
+  - **Resident**: regular users who report faults and receive announcements.
+  - **Property Manager / Maintenance (isännöinti)**: partner account responsible for managing repair requests and administrative tasks for the housing company.
+  - **Service Company (huolto)**: partner account responsible for on-site maintenance work and service operations.
+
+Relationship: Admin -> Housing Company -> (Resident, Property Manager, Service Company).
+
+Developer rule: comment code always in English.
+
 ## Tech Stack
 - React Native with Expo (managed workflow)
 - TypeScript (strict)

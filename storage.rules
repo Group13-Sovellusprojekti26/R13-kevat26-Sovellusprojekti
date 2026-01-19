@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for TaloFix
+// Images are uploaded via Cloud Functions, so no direct create/update rules needed
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // ========== FAULT REPORT IMAGES ==========
+    // Path: /faultReports/{reportId}/image_{index}.{ext}
+    // Upload is handled by Cloud Function (uploadFaultReportImage)
+    match /faultReports/{reportId}/{imageFile} {
+      // Only allow reading images (upload via Cloud Function only)
+      allow read: if isAuthenticated();
+      
+      // No direct write access - uploads go through Cloud Function
+      allow write: if false;
+    }
+    
+    // ========== USER PROFILE IMAGES (future use) ==========
+    match /users/{userId}/{imageFile} {
+      // For now, allow authenticated users to manage their own profile images
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ========== ANNOUNCEMENT IMAGES (future use) ==========
+    match /announcements/{announcementId}/{imageFile} {
+      allow read: if isAuthenticated();
+      // Uploads will be handled via Cloud Function when implemented
+      allow write: if false;
+    }
+    
+    // Deny all other paths by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

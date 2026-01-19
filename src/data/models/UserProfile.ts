@@ -2,7 +2,7 @@ import { UserRole } from './enums';
 
 /**
  * User profile stored in Firestore: users/{uid}
- * Tämä on AINA se lähde josta buildingId ja housingCompanyId tulevat
+ * This is ALWAYS the source for buildingId and housingCompanyId
  */
 export interface UserProfile {
   id: string;                // Firebase Auth UID
@@ -12,20 +12,22 @@ export interface UserProfile {
   lastName: string;
   role: UserRole;
 
-  // 🔑 KRIITTINEN – tarvitaan kaikissa kyselyissä
   housingCompanyId: string;
   buildingId: string;
+
+  housingCompanyName?: string;
 
   apartmentNumber?: string;
   phone?: string;
   photoUrl?: string;
+  companyName?: string; // For maintenance and service company users
 
   createdAt: Date;
   updatedAt: Date;
 }
 
 /**
- * Käytetään kun käyttäjä luodaan ensimmäistä kertaa
+ * Used when a user is created for the first time
  */
 export interface CreateUserProfileInput {
   id: string;                // Firebase Auth UID
@@ -43,7 +45,7 @@ export interface CreateUserProfileInput {
 }
 
 /**
- * Käytetään profiilin muokkaukseen
+ * Used for editing/updating the profile
  */
 export interface UpdateUserProfileInput {
   firstName?: string;

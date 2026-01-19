@@ -1,5 +1,8 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import { 
+  getAuth,
+  Auth,
+} from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
@@ -15,11 +18,12 @@ const firebaseConfig = {
 
 const app: FirebaseApp = initializeApp(firebaseConfig);
 
-
+// Initialize Auth (React Native persistence is handled automatically by Firebase)
 export const auth: Auth = getAuth(app);
 
 export const db: Firestore = getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);
-export const functions: Functions = getFunctions(app);
+// Functions are deployed to europe-west1 region
+export const functions: Functions = getFunctions(app, 'europe-west1');
 
 export default app;

@@ -159,11 +159,10 @@ firebase deploy --only firestore:rules
 
 ### Cloud Functions
 
-Vain privilegoidut operaatiot toteutetaan funktioina:
-- `updateFaultReportStatus` (admin/maintenance)
-- `publishAnnouncement` (admin)
-- `deleteAnnouncement` (admin)
-- `createUserProfileFn` (käyttäjän luonti)
+ Vain privilegoidut operaatiot toteutetaan funktioina:
+ - `updateFaultReportStatus` (admin/maintenance)
+ - `publishAnnouncement` (admin)
+ - `deleteAnnouncement` (admin)
 
 **Kehitys:**
 ```bash
