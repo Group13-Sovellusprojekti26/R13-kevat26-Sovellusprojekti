@@ -1,10 +1,11 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
-import { ServiceCompanyDashboardScreen } from '../../features/serviceCompany/views/ServiceCompanyDashboardScreen';
+import { ServiceCompanyTabs } from './ServiceCompanyTabs';
+import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 
 export type ServiceCompanyStackParamList = {
-  ServiceCompanyDashboard: undefined;
+  Tabs: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<ServiceCompanyStackParamList>();
@@ -13,20 +14,21 @@ const Stack = createNativeStackNavigator<ServiceCompanyStackParamList>();
  * Navigation stack for service company users
  */
 export const ServiceCompanyStack: React.FC = () => {
-  const { t } = useTranslation();
-
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
       }}
     >
       <Stack.Screen
-        name="ServiceCompanyDashboard"
-        component={ServiceCompanyDashboardScreen}
+        name="Tabs"
+        component={ServiceCompanyTabs}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
         options={{
-          title: t('serviceCompany.dashboard'),
-          headerLargeTitle: true,
+          headerShown: true,
         }}
       />
     </Stack.Navigator>

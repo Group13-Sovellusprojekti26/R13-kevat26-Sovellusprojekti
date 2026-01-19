@@ -74,9 +74,26 @@
     "location": "Sijainti",
     "submit": "Lähetä",
     "cancel": "Peruuta",
+    "addImage": "Lisää kuva",
+    "deleteImage": "Poista kuva",
+    "deleteImageConfirm": "Haluatko varmasti poistaa tämän kuvan?",
     "urgent": "Kiireellinen",
     "urgency": "Kiireellisyys",
+    "urgencyLow": "Matala",
+    "urgencyMedium": "Normaali",
+    "urgencyHigh": "Korkea",
+    "urgencyUrgent": "Kiireellinen",
+    "statusOpen": "Avoin",
+    "statusInProgress": "Käsittelyssä",
+    "statusResolved": "Ratkaistu",
+    "statusClosed": "Suljettu",
     "descriptionRequired": "Kuvaus on pakollinen",
+    "descriptionMinLength": "Kuvauksen tulee olla vähintään {{min}} merkkiä",
+    "descriptionMaxLength": "Kuvaus saa olla enintään {{max}} merkkiä",
+    "descriptionMinMax": "Min {{min}} / Max {{max}}",
+    "descriptionCount": "{{current}}/{{max}}",
+    "imageBase64Missing": "Kuvan käsittely epäonnistui. Valitse kuva uudelleen.",
+    "imageProcessingFailed": "Kuvan pakkaus epäonnistui. Yritä uudelleen.",
     "locationRequired": "Sijainti on pakollinen",
     "titleRequired": "Otsikko on pakollinen",
     "createSuccess": "Vikailmoitus lähetetty",
@@ -96,12 +113,30 @@
     "back": "Takaisin",
     "logout": "Kirjaudu ulos",
     "copied": "Kopioitu leikepöydälle",
-    "success": "Onnistui"
+    "success": "Onnistui",
+    "settings": "Asetukset"
+  },
+  "settings": {
+    "title": "Asetukset",
+    "theme": {
+      "title": "Teema",
+      "description": "Valitse sovelluksen teema",
+      "light": "Vaalea teema",
+      "dark": "Tumma teema"
+    },
+    "language": {
+      "title": "Kieli",
+      "description": "Valitse sovelluksen kieli",
+      "finnish": "Suomi",
+      "english": "Englanti"
+    }
   },
   "admin": {
     "dashboard": {
       "title": "Admin-hallinta",
-      "subtitle": "Hallinnoi taloyhtiöitä"
+      "subtitle": "Hallinnoi taloyhtiöitä",
+      "welcome": "Tervetuloa!",
+      "welcomeMessage": "Täältä voit hallinnoida taloyhtiöitä ja niiden kutsukoodeja."
     },
     "createCompany": "Luo taloyhtiö",
     "createCompanySubtitle": "Täytä taloyhtiön tiedot. Taloyhtiö rekisteröityy kutsukoodilla.",
@@ -150,7 +185,12 @@
       "tabLabel": "Oma sivu",
       "subtitle": "Tervetuloa TaloFix-palveluun",
       "welcome": "Tervetuloa!",
+      "welcomeWithName": "Tervetuloa, {{name}}!",
       "welcomeMessage": "Täältä voit raportoida vikoja asunnossasi ja seurata vikailmoitustesi tilaa.",
+      "deleteAccount": "Poista tili",
+      "deleteAccountMessage": "Tämä poistaa tilisi, kirjautumistiedot ja kaikki sinun vikailmoituksesi. Tätä toimintoa ei voi perua.",
+      "deleteAccountSuccess": "Tilisi on poistettu",
+      "deleteAccountError": "Tilin poistaminen epäonnistui",
       "yourInfo": "Tietosi",
       "name": "Nimi",
       "faultReports": "Vikailmoitukset"
@@ -159,13 +199,20 @@
   "housingCompany": {
     "dashboard": {
       "title": "Taloyhtiön hallinta",
+      "tabLabel": "Hallinta",
       "subtitle": "Tervetuloa TaloFix-palveluun",
       "welcome": "Tervetuloa!",
+      "welcomeWithName": "Tervetuloa, {{name}}!",
       "welcomeMessage": "Täältä voit hallita vikailmoituksia, tiedotteita ja asukkaita.",
+      "partnersSectionTitle": "Lisätiedot",
       "faultReports": "Vikailmoitukset",
       "announcements": "Tiedotteet",
       "manageFaults": "Hallinnoi vikailmoituksia",
-      "manageAnnouncements": "Hallinnoi tiedotteita"
+      "manageFaultsTab": "Vikailmoitukset",
+      "manageAnnouncements": "Hallinnoi tiedotteita",
+      "manageAnnouncementsTab": "Tiedotteet",
+      "faultReportsComingSoon": "Vikailmoitusten hallinta tulossa pian. Tästä voit tulevaisuudessa nähdä ja hallita kaikkia vikailmoituksia.",
+      "announcementsComingSoon": "Tiedotteiden hallinta tulossa pian. Tästä voit tulevaisuudessa luoda ja hallita tiedotteita asukkaille."
     },
     "residents": {
       "title": "Asukkaat",
@@ -199,6 +246,7 @@
         "active": "Rekisteröitynyt",
         "expired": "Vanhentunut"
       },
+      "registeredResident": "Rekisteröitynyt asukas",
       "copyCode": "Kopioi koodi",
       "codeCopied": "Kutsukoodi kopioitu!",
       "deleteInvite": "Poista asunto",
@@ -257,7 +305,14 @@
       "title": "Isännöinnin hallinta",
       "subtitle": "Tervetuloa TaloFix-palveluun",
       "welcome": "Tervetuloa!",
+      "welcomeWithName": "Tervetuloa, {{name}}!",
       "welcomeMessage": "Täältä voit hallita vikailmoituksia ja tiedotteita.",
+      "manageFaults": "Hallinnoi vikailmoituksia",
+      "manageFaultsTab": "Vikailmoitukset",
+      "manageAnnouncements": "Hallinnoi tiedotteita",
+      "manageAnnouncementsTab": "Tiedotteet",
+      "faultReportsComingSoon": "Vikailmoitusten hallinta tulossa pian. Tästä voit tulevaisuudessa nähdä ja hallita kaikkia vikailmoituksia.",
+      "announcementsComingSoon": "Tiedotteiden hallinta tulossa pian. Tästä voit tulevaisuudessa luoda ja hallita tiedotteita.",
       "yourInfo": "Tietosi",
       "name": "Nimi",
       "companyName": "Yritys",
@@ -267,6 +322,15 @@
   },
   "serviceCompany": {
     "dashboard": "Huoltoyhtiö",
+    "welcome": "Tervetuloa!",
+    "welcomeWithName": "Tervetuloa, {{name}}!",
+    "welcomeMessage": "Täältä voit hallita vikailmoituksia ja tiedotteita.",
+    "manageFaults": "Hallinnoi vikailmoituksia",
+    "manageFaultsTab": "Vikailmoitukset",
+    "manageAnnouncements": "Hallinnoi tiedotteita",
+    "manageAnnouncementsTab": "Tiedotteet",
+    "faultReportsComingSoon": "Vikailmoitusten hallinta tulossa pian. Tästä voit tulevaisuudessa nähdä ja hallita kaikkia vikailmoituksia.",
+    "announcementsComingSoon": "Tiedotteiden hallinta tulossa pian. Tästä voit tulevaisuudessa luoda ja hallita tiedotteita.",
     "welcomeBack": "Tervetuloa takaisin",
     "dashboardSubtitle": "Täältä voit hallita vikailmoituksia",
     "yourInfo": "Tietosi",

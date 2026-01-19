@@ -1,14 +1,13 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { Text, Surface, useTheme, Divider, IconButton, Card } from 'react-native-paper';
+import { View, StyleSheet } from 'react-native';
+import { Text, Surface, useTheme, Card } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../../shared/components/Screen';
-import { signOut } from '../../auth/services/auth.service';
 import { useMaintenanceVM } from '../viewmodels/useMaintenanceVM';
 
 /**
  * Dashboard screen for maintenance/property manager users
- * Shows company info and provides logout functionality
+ * Shows company info and statistics
  */
 export const MaintenanceDashboardScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -19,47 +18,13 @@ export const MaintenanceDashboardScreen: React.FC = () => {
     loadProfile();
   }, [loadProfile]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      t('common.logout'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.logout'), 
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
-  };
+  const welcomeName = profile?.companyName
+    ? profile.companyName
+    : [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
 
   return (
-    <Screen>
+    <Screen scrollable safeAreaEdges={['right', 'bottom', 'left']}>
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Surface style={[styles.logoContainer, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
-              <Text style={[styles.logo, { color: theme.colors.primary }]}>🔧</Text>
-            </Surface>
-            <View style={styles.headerText}>
-              <Text variant="headlineSmall" style={styles.title}>
-                {t('maintenance.dashboard.title')}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                {t('maintenance.dashboard.subtitle')}
-              </Text>
-            </View>
-          </View>
-          <IconButton
-            icon="logout"
-            size={24}
-            onPress={handleLogout}
-          />
-        </View>
-
-        <Divider style={styles.divider} />
 
         {/* User Info Card */}
         {profile && (
@@ -94,16 +59,6 @@ export const MaintenanceDashboardScreen: React.FC = () => {
           </Card>
         )}
 
-        {/* Welcome Card */}
-        <Surface style={styles.welcomeCard} elevation={1}>
-          <Text variant="titleLarge" style={styles.welcomeTitle}>
-            {t('maintenance.dashboard.welcome')}
-          </Text>
-          <Text variant="bodyMedium" style={[styles.welcomeText, { color: theme.colors.onSurfaceVariant }]}>
-            {t('maintenance.dashboard.welcomeMessage')}
-          </Text>
-        </Surface>
-
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
@@ -120,6 +75,18 @@ export const MaintenanceDashboardScreen: React.FC = () => {
             </Text>
           </Surface>
         </View>
+
+        {/* Welcome Card */}
+        <Surface style={styles.welcomeCard} elevation={1}>
+          <Text variant="titleLarge" style={styles.welcomeTitle}>
+            {welcomeName
+              ? t('maintenance.dashboard.welcomeWithName', { name: welcomeName })
+              : t('maintenance.dashboard.welcome')}
+          </Text>
+          <Text variant="bodyMedium" style={[styles.welcomeText, { color: theme.colors.onSurfaceVariant }]}>
+            {t('maintenance.dashboard.welcomeMessage')}
+          </Text>
+        </Surface>
       </View>
     </Screen>
   );
@@ -128,40 +95,6 @@ export const MaintenanceDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  logoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logo: {
-    fontSize: 28,
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  subtitle: {
-  },
-  divider: {
-    marginBottom: 24,
   },
   infoCard: {
     marginBottom: 16,
@@ -198,6 +131,7 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,

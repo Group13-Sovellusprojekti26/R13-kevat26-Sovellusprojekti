@@ -1,9 +1,11 @@
 import {onCall, HttpsError, CallableRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import * as sgMail from "@sendgrid/mail";
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
+
+// Get Storage bucket reference
+const bucket = admin.storage().bucket();
 
 // Export partner management functions
 export {
@@ -15,11 +17,7 @@ export {
 
 const db = admin.firestore();
 
-// Initialize SendGrid with API key from environment
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
+
 
 type UserRole = "resident" | "admin" | "maintenance" | "property_manager" | "housing_company";
 
@@ -92,6 +90,91 @@ const assertAllowedRole = (role: UserRole, allowed: UserRole[]) => {
 // ========== FAULT REPORTS ==========
 // Note: Read and create operations are now handled by client + Security Rules
 // Only privileged operations remain as Functions
+
+/**
+ * Uploads an image to Firebase Storage for a fault report.
+ * Handles base64 encoded images from React Native clients.
+ *
+ * @param {string} faultReportId - Fault report document ID
+ * @param {string} imageBase64 - Base64 encoded image data (without data: prefix)
+ * @param {string} contentType - MIME type of the image (e.g., 'image/webp')
+ * @param {number} imageIndex - Index of the image (for naming)
+ * @returns {string} url - Public download URL of the uploaded image
+ */
+export const uploadFaultReportImage = onCall(
+  {region: "europe-west1", maxInstances: 10},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {housingCompanyId} = await getUserProfile(uid);
+
+    const {faultReportId, imageBase64, contentType, imageIndex} =
+      request.data || {};
+
+    if (
+      typeof faultReportId !== "string" ||
+      typeof imageBase64 !== "string" ||
+      typeof contentType !== "string" ||
+      typeof imageIndex !== "number"
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    // Verify the fault report exists and belongs to user's housing company
+    const reportRef = db.collection("faultReports").doc(faultReportId);
+    const reportSnap = await reportRef.get();
+
+    if (!reportSnap.exists) {
+      throw new HttpsError("not-found", "Fault report not found.");
+    }
+
+    const reportData = reportSnap.data();
+    if (reportData?.housingCompanyId !== housingCompanyId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Cross-company access blocked."
+      );
+    }
+
+    // Verify the user created this report (residents can only upload to own)
+    if (reportData?.createdBy !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "You can only upload images to your own fault reports."
+      );
+    }
+
+    // Determine file extension
+    let extension = ".jpg";
+    if (contentType === "image/png") extension = ".png";
+    else if (contentType === "image/webp") extension = ".webp";
+    else if (contentType === "image/heic") extension = ".heic";
+
+    const filePath = `faultReports/${faultReportId}/image_${imageIndex}${extension}`;
+
+    try {
+      // Decode base64 and upload to Storage
+      const imageBuffer = Buffer.from(imageBase64, "base64");
+
+      const file = bucket.file(filePath);
+      await file.save(imageBuffer, {
+        metadata: {
+          contentType,
+        },
+      });
+
+      // Make the file publicly readable
+      await file.makePublic();
+
+      // Get the public URL
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+      return {url: publicUrl};
+    } catch (error: unknown) {
+      console.error("Upload error:", error);
+      throw new HttpsError("internal", "Failed to upload image.");
+    }
+  }
+);
 
 /**
  * Updates the status of a fault report.
@@ -226,56 +309,42 @@ export const deleteAnnouncement = onCall(
 
 // ========== USER PROFILE ==========
 // Note: Read and update operations are now handled by client + Security Rules
-// Only initial profile creation remains as Function
+// Only privileged operations remain as Functions
 
 /**
- * Creates a new user profile for the authenticated user.
- * Throws error if profile already exists.
- * Automatically assigns "resident" role.
+ * Deletes the authenticated resident account.
+ * Removes user profile, auth account, and related fault reports.
+ * Only accessible by resident role.
  *
- * @param {string} email - User email address
- * @param {string} firstName - User first name
- * @param {string} lastName - User last name
- * @param {string} phone - Optional phone number
- * @param {string} buildingId - Optional building ID
- * @param {string} apartmentNumber - Optional apartment number
  * @returns {boolean} ok - Success indicator
  */
-export const createUserProfileFn = onCall(
+export const deleteResidentAccount = onCall(
   {region: "europe-west1"},
   async (request) => {
     const uid = assertAuth(request);
+    const {role} = await getUserProfile(uid);
+    assertAllowedRole(role, ["resident"]);
 
-    const {email, firstName, lastName, phone, buildingId, apartmentNumber} =
-      request.data || {};
-    if (
-      typeof email !== "string" ||
-      typeof firstName !== "string" ||
-      typeof lastName !== "string"
-    ) {
-      throw new HttpsError("invalid-argument", "Missing required fields.");
+    // Delete all fault reports created by this resident
+    const faultReportsSnap = await db
+      .collection("faultReports")
+      .where("createdBy", "==", uid)
+      .get();
+
+    const deleteFaultReports = faultReportsSnap.docs.map((doc) => doc.ref.delete());
+    await Promise.all(deleteFaultReports);
+
+    // Delete user profile document
+    await db.collection("users").doc(uid).delete();
+
+    // Delete user from Firebase Authentication
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (authError: any) {
+      if (authError.code !== "auth/user-not-found") {
+        throw authError;
+      }
     }
-
-    const existingSnap = await db.collection("users").doc(uid).get();
-    if (existingSnap.exists) {
-      throw new HttpsError("already-exists", "User profile already exists.");
-    }
-
-    await db
-      .collection("users")
-      .doc(uid)
-      .set({
-        email,
-        firstName,
-        lastName,
-        phone: typeof phone === "string" ? phone : null,
-        buildingId: typeof buildingId === "string" ? buildingId : null,
-        apartmentNumber:
-          typeof apartmentNumber === "string" ? apartmentNumber : null,
-        role: "resident",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
 
     return {ok: true};
   }
@@ -467,16 +536,7 @@ export const deleteHousingCompany = onCall(
         // Delete user profile document
         await db.collection("users").doc(userId).delete();
         
-        // Delete all fault reports created by this resident
-        const faultReportsSnap = await db
-          .collection("faultReports")
-          .where("createdBy", "==", userId)
-          .get();
-        
-        const faultReportDeletePromises = faultReportsSnap.docs.map((doc) =>
-          doc.ref.delete()
-        );
-        await Promise.all(faultReportDeletePromises);
+        // Note: Fault reports and their images will be deleted in bulk below
       }
       
       // Delete the resident invite document
@@ -484,6 +544,38 @@ export const deleteHousingCompany = onCall(
     });
 
     await Promise.all(residentDeletePromises);
+
+    // Delete all fault report images from Storage for this housing company
+    const allFaultReportsSnap = await db
+      .collection("faultReports")
+      .where("housingCompanyId", "==", housingCompanyId)
+      .get();
+
+    // Delete all images for each fault report
+    const faultReportImageDeletePromises = allFaultReportsSnap.docs.map(async (faultDoc) => {
+      const faultReportId = faultDoc.id;
+      
+      try {
+        // Delete all images in the faultReports/{faultReportId}/ folder
+        const [files] = await bucket.getFiles({
+          prefix: `faultReports/${faultReportId}/`,
+        });
+
+        // Delete each image file
+        const imageDeletePromises = files.map((file) => file.delete().catch((error) => {
+          console.error(`Failed to delete image ${file.name}:`, error);
+        }));
+        
+        await Promise.all(imageDeletePromises);
+      } catch (error) {
+        console.error(`Failed to delete images for fault report ${faultReportId}:`, error);
+      }
+      
+      // Delete the fault report document
+      await faultDoc.ref.delete();
+    });
+
+    await Promise.all(faultReportImageDeletePromises);
 
     // Delete all management invites for this housing company
     const managementInvitesSnap = await db
@@ -1005,10 +1097,22 @@ export const getResidentInviteCodes = onCall(
       .limit(50)
       .get();
 
-    const invites = invitesSnap.docs.map((doc) => {
+    const invites = await Promise.all(invitesSnap.docs.map(async (doc) => {
       const data = doc.data();
       const expiresAt = data.expiresAt?.toDate();
       const isExpired = expiresAt ? expiresAt < new Date() : true;
+      let residentName: string | undefined;
+
+      if (data.isUsed && data.usedByUserId) {
+        const userSnap = await db.collection("users").doc(data.usedByUserId).get();
+        if (userSnap.exists) {
+          const user = userSnap.data();
+          const nameParts = [user?.firstName, user?.lastName].filter(Boolean);
+          if (nameParts.length > 0) {
+            residentName = nameParts.join(" ");
+          }
+        }
+      }
       
       return {
         id: doc.id,
@@ -1019,8 +1123,9 @@ export const getResidentInviteCodes = onCall(
         isExpired,
         expiresAt: expiresAt?.toISOString(),
         createdAt: data.createdAt?.toDate()?.toISOString(),
+        residentName,
       };
-    });
+    }));
 
     return {invites};
   }

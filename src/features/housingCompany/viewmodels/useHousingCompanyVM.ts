@@ -19,11 +19,16 @@ import {
   ManagementUserResponse,
   ServiceCompanyUserResponse,
 } from '../../../data/repositories/partners.repo';
+import { getUserProfile } from '../../../data/repositories/users.repo';
+import { getHousingCompanyById } from '../../../data/repositories/housingCompanies.repo';
+import { UserProfile } from '../../../data/models/UserProfile';
 
 interface HousingCompanyState {
   residentInvites: ResidentInvite[];
   managementUser: ManagementUserResponse | null;
   serviceCompanyUser: ServiceCompanyUserResponse | null;
+  userProfile: UserProfile | null;
+  housingCompanyName: string | null;
   isLoading: boolean;
   error: string | null;
   
@@ -31,6 +36,7 @@ interface HousingCompanyState {
   loadResidentInvites: () => Promise<void>;
   loadManagementUser: () => Promise<void>;
   loadServiceCompanyUser: () => Promise<void>;
+  loadUserProfile: () => Promise<void>;
   generateResidentInviteCode: (buildingId: string, apartmentNumber: string) => Promise<{
     inviteCode: string;
     expiresAt: string;
@@ -55,6 +61,8 @@ export const useHousingCompanyVM = create<HousingCompanyState>((set, get) => ({
   residentInvites: [],
   managementUser: null,
   serviceCompanyUser: null,
+  userProfile: null,
+  housingCompanyName: null,
   isLoading: false,
   error: null,
 
@@ -93,6 +101,24 @@ export const useHousingCompanyVM = create<HousingCompanyState>((set, get) => ({
       set({ 
         error: error?.message || 'housingCompany.serviceCompany.getError', 
         isLoading: false 
+      });
+    }
+  },
+
+  loadUserProfile: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const profile = await getUserProfile();
+      let name: string | null = null;
+      if (profile?.housingCompanyId) {
+        const company = await getHousingCompanyById(profile.housingCompanyId);
+        name = company?.name ?? null;
+      }
+      set({ userProfile: profile, housingCompanyName: name, isLoading: false });
+    } catch (error: any) {
+      set({
+        error: error?.message || 'housingCompany.profile.getError',
+        isLoading: false,
       });
     }
   },

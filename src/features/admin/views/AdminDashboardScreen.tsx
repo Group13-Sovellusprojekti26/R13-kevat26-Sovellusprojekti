@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Divider, ActivityIndicator, Chip, Surface, useTheme, IconButton } from 'react-native-paper';
+import { Text, Card, ActivityIndicator, Chip, Surface, useTheme, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { Screen } from '../../../shared/components/Screen';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { TFButton } from '../../../shared/components/TFButton';
 import { useAdminVM } from '../viewmodels/useAdminVM';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
@@ -18,18 +18,14 @@ export const AdminDashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<AdminStackParamList>>();
   const { companies, isLoading, loadCompanies } = useAdminVM();
 
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
   const handleLogout = () => {
     Alert.alert(
       t('common.logout'),
       '',
       [
         { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.logout'), 
+        {
+          text: t('common.logout'),
           style: 'destructive',
           onPress: () => signOut(),
         },
@@ -37,42 +33,51 @@ export const AdminDashboardScreen: React.FC = () => {
     );
   };
 
+  useEffect(() => {
+    loadCompanies();
+  }, [loadCompanies]);
+
   if (isLoading && companies.length === 0) {
     return (
-      <Screen>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
         </View>
-      </Screen>
+      </SafeAreaView>
     );
   }
 
   return (
-    <Screen safeAreaEdges={['left', 'right', 'bottom']}>
-      <ScrollView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Surface style={[styles.logoContainer, { backgroundColor: theme.colors.secondaryContainer }]} elevation={0}>
-              <Text style={[styles.logo, { color: theme.colors.secondary }]}>⚙️</Text>
-            </Surface>
-            <View style={styles.headerText}>
-              <Text variant="headlineSmall" style={styles.title}>
-                {t('admin.dashboard.title')}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                {t('admin.dashboard.subtitle')}
-              </Text>
-            </View>
-          </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.surface }]}>
+      {/* Custom Header - same style as Tab Navigator header */}
+      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        <Text variant="titleLarge" style={styles.headerTitle}>
+          {t('admin.dashboard.title')}
+        </Text>
+        <View style={styles.headerActions}>
+          <IconButton
+            icon="cog-outline"
+            onPress={() => navigation.navigate('Settings')}
+          />
           <IconButton
             icon="logout"
-            size={24}
             onPress={handleLogout}
           />
         </View>
-
-        <Divider style={styles.divider} />
+      </View>
+      <ScrollView 
+        style={[styles.scrollContainer, { backgroundColor: theme.colors.background }]} 
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Welcome Card */}
+        <Surface style={styles.welcomeCard} elevation={1}>
+          <Text variant="titleLarge" style={styles.welcomeTitle}>
+            {t('admin.dashboard.welcome')}
+          </Text>
+          <Text variant="bodyMedium" style={[styles.welcomeText, { color: theme.colors.onSurfaceVariant }]}>
+            {t('admin.dashboard.welcomeMessage')}
+          </Text>
+        </Surface>
 
         {/* Create Button */}
         <TFButton
@@ -149,52 +154,51 @@ export const AdminDashboardScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </Screen>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 4,
+    height: 56,
+  },
+  headerTitle: {
+    fontWeight: '600',
+    fontSize: 18,
+  },
+  headerActions: {
+    flexDirection: 'row',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  logoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logo: {
-    fontSize: 28,
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  subtitle: {
-  },
-  divider: {
+  welcomeCard: {
+    padding: 20,
+    borderRadius: 16,
     marginBottom: 24,
+  },
+  welcomeTitle: {
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  welcomeText: {
+    lineHeight: 22,
   },
   createButton: {
     marginBottom: 24,

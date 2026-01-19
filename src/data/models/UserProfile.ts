@@ -15,6 +15,8 @@ export interface UserProfile {
   housingCompanyId: string;
   buildingId: string;
 
+  housingCompanyName?: string;
+
   apartmentNumber?: string;
   phone?: string;
   photoUrl?: string;

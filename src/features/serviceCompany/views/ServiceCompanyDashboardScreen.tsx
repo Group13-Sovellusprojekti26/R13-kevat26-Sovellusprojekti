@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import { Text, Card, Surface, Divider, useTheme, IconButton } from 'react-native-paper';
+import { View, StyleSheet } from 'react-native';
+import { Text, Card, Surface, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../../shared/components/Screen';
-import { signOut } from '../../auth/services/auth.service';
 import { useServiceCompanyVM } from '../viewmodels/useServiceCompanyVM';
 
 /**
@@ -19,21 +18,6 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
     loadProfile();
   }, [loadProfile]);
 
-  const handleLogout = () => {
-    Alert.alert(
-      t('common.logout'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.logout'), 
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
-  };
-
   if (isLoading || !profile) {
     return (
       <Screen>
@@ -44,32 +28,13 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
     );
   }
 
-  return (
-    <Screen>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Surface style={[styles.logoContainer, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
-              <Text style={[styles.logo, { color: theme.colors.primary }]}>🔧</Text>
-            </Surface>
-            <View style={styles.headerText}>
-              <Text variant="headlineSmall" style={styles.title}>
-                {t('serviceCompany.dashboard')}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                {t('serviceCompany.dashboardSubtitle')}
-              </Text>
-            </View>
-          </View>
-          <IconButton
-            icon="logout"
-            size={24}
-            onPress={handleLogout}
-          />
-        </View>
+  const welcomeName = profile.companyName
+    ? profile.companyName
+    : [profile.firstName, profile.lastName].filter(Boolean).join(' ');
 
-        <Divider style={styles.divider} />
+  return (
+    <Screen scrollable safeAreaEdges={['right', 'bottom', 'left']}>
+      <View style={styles.container}>
 
         {/* User Info Card */}
         <Card style={styles.infoCard}>
@@ -102,16 +67,6 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
           </Card.Content>
         </Card>
 
-        {/* Welcome Card */}
-        <Surface style={styles.welcomeCard} elevation={1}>
-          <Text variant="titleLarge" style={styles.welcomeTitle}>
-            {t('serviceCompany.welcomeBack')}, {profile.firstName}!
-          </Text>
-          <Text variant="bodyMedium" style={[styles.welcomeText, { color: theme.colors.onSurfaceVariant }]}>
-            {t('serviceCompany.dashboardSubtitle')}
-          </Text>
-        </Surface>
-
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
@@ -128,6 +83,18 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
             </Text>
           </Surface>
         </View>
+
+        {/* Welcome Card */}
+        <Surface style={styles.welcomeCard} elevation={1}>
+          <Text variant="titleLarge" style={styles.welcomeTitle}>
+            {welcomeName
+              ? t('serviceCompany.welcomeWithName', { name: welcomeName })
+              : t('serviceCompany.welcome')}
+          </Text>
+          <Text variant="bodyMedium" style={[styles.welcomeText, { color: theme.colors.onSurfaceVariant }]}>
+            {t('serviceCompany.welcomeMessage')}
+          </Text>
+        </Surface>
       </View>
     </Screen>
   );
@@ -136,41 +103,6 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  logoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logo: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    marginTop: 4,
-  },
-  divider: {
-    marginBottom: 16,
   },
   infoCard: {
     marginBottom: 16,
@@ -193,26 +125,26 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   welcomeCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
   },
   welcomeTitle: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     marginBottom: 8,
   },
   welcomeText: {
-    lineHeight: 20,
+    lineHeight: 22,
   },
   statsContainer: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     alignItems: 'center',
   },
   statNumber: {

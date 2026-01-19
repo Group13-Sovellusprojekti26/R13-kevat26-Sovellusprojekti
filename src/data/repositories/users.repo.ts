@@ -1,9 +1,10 @@
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebase/firebase';
 import { getCurrentUser } from '../../features/auth/services/auth.service';
 import { UserProfile } from '../models/UserProfile';
 import { UserRole } from '../models/enums';
-import { AppError } from '../../shared/utils/errors';
+import { AppError, logError } from '../../shared/utils/errors';
 import { timestampToDate } from '../../shared/utils/firebase';
 
 // Firestore UserProfile data type
@@ -74,4 +75,18 @@ export async function getUserProfile(): Promise<UserProfile | null> {
     createdAt: timestampToDate(d.createdAt)!,
     updatedAt: d.updatedAt ? timestampToDate(d.updatedAt)! : timestampToDate(d.createdAt)!,
   };
+}
+
+/**
+ * Deletes the current resident account (auth + profile + related data)
+ * Uses Cloud Function for privileged operation
+ */
+export async function deleteResidentAccount(): Promise<void> {
+  try {
+    const fn = httpsCallable<unknown, { ok: boolean }>(functions, 'deleteResidentAccount');
+    await fn({});
+  } catch (error: any) {
+    logError(error, 'Delete resident account');
+    throw new AppError('resident.dashboard.deleteAccountError', error?.code, error);
+  }
 }

@@ -44,9 +44,18 @@ service cloud.firestore {
         && request.resource.data.status == 'open'
         && request.resource.data.keys().hasAll(['buildingId', 'title', 'description', 'status', 'createdBy', 'housingCompanyId', 'createdAt', 'updatedAt']);
       
-      // Update: ONLY through Cloud Functions (admin/maintenance)
-      // This prevents residents from changing status or other fields
-      allow update: if false;
+      // Update: Users can update their own reports to add images
+      // Only imageUrls and updatedAt fields can be modified
+      // Status changes ONLY through Cloud Functions (admin/maintenance)
+      allow update: if isAuthenticated()
+        && resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.housingCompanyId == resource.data.housingCompanyId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.description == resource.data.description
+        && request.resource.data.buildingId == resource.data.buildingId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageUrls', 'updatedAt']);
       
       // Delete: ONLY through Cloud Functions (admin)
       allow delete: if false;

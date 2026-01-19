@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
-import { Text, SegmentedButtons } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Image, Pressable, Alert } from 'react-native';
+import { Text, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 
@@ -12,17 +13,20 @@ import { Screen } from '../../../../shared/components/Screen';
 import { TFButton } from '../../../../shared/components/TFButton';
 import { TFTextField } from '../../../../shared/components/TFTextField';
 import { useCreateFaultReportVM } from '../viewmodels/useCreateFaultReportVM';
-import { UrgencyLevel } from '../../../../data/models/enums';import { Alert } from 'react-native';
+import { UrgencyLevel } from '../../../../data/models/enums';
 import { haptic } from '../../../../shared/utils/haptics';
 
 // ---------------- VALIDATION ----------------
 
-
-
+const MIN_DESCRIPTION_LENGTH = 10;
+const MAX_DESCRIPTION_LENGTH = 100;
 
 const createFaultReportSchema = z.object({
   title: z.string().min(1, 'faults.titleRequired'),
-  description: z.string().min(10, 'faults.descriptionRequired'),
+  description: z
+    .string()
+    .min(MIN_DESCRIPTION_LENGTH, 'faults.descriptionMinLength')
+    .max(MAX_DESCRIPTION_LENGTH, 'faults.descriptionMaxLength'),
   location: z.string().min(1, 'faults.locationRequired'),
   urgency: z.nativeEnum(UrgencyLevel),
 });
@@ -33,31 +37,29 @@ type CreateFaultReportFormData = z.infer<typeof createFaultReportSchema>;
 
 export const CreateFaultReportScreen: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const navigation = useNavigation();
   const { loading, error, success, submitReport, clearError, reset } =
     useCreateFaultReportVM();
 
   const [imageUris, setImageUris] = useState<string[]>([]);
-const removeImage = (index: number) => {
-  Alert.alert(
-    t('faults.deleteImage'),
-    t('faults.deleteImageConfirm'),
-    [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: () => {
-          haptic.light();
-          setImageUris(prev => prev.filter((_, i) => i !== index));
+  const removeImage = (index: number) => {
+    Alert.alert(
+      t('faults.deleteImage'),
+      t('faults.deleteImageConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            haptic.light();
+            setImageUris(prev => prev.filter((_, i) => i !== index));
+          },
         },
-      },
-    ]
-  );
-};
-
-
-
+      ]
+    );
+  };
 
 
   const {
@@ -65,6 +67,7 @@ const removeImage = (index: number) => {
     handleSubmit,
     formState: { errors },
     reset: resetForm,
+    watch,
   } = useForm<CreateFaultReportFormData>({
     resolver: zodResolver(createFaultReportSchema),
     defaultValues: {
@@ -81,7 +84,10 @@ const removeImage = (index: number) => {
       reset();
       navigation.goBack();
     }
-  }, [success]);
+  }, [navigation, reset, resetForm, success]);
+
+  const descriptionValue = watch('description');
+  const descriptionCount = descriptionValue?.length ?? 0;
 
   // ---------------- IMAGE PICKER ----------------
 
@@ -90,12 +96,40 @@ const removeImage = (index: number) => {
     if (!permission.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      quality: 0.7,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsEditing: false,
     });
 
     if (!result.canceled && result.assets.length > 0) {
-      setImageUris(prev => [...prev, result.assets[0].uri]);
+      const asset = result.assets[0];
+      
+      try {
+        // Compress and convert image to WebP format for optimal size
+        const manipulatedImage = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [
+            // Resize if image is too large (max 1920px width)
+            { resize: { width: Math.min(asset.width ?? 1920, 1920) } },
+          ],
+          {
+            compress: 0.7,
+            format: ImageManipulator.SaveFormat.WEBP,
+            base64: true,
+          }
+        );
+
+        if (!manipulatedImage.base64) {
+          Alert.alert(t('common.error'), t('faults.imageBase64Missing'));
+          return;
+        }
+
+        const dataUrl = `data:image/webp;base64,${manipulatedImage.base64}`;
+        setImageUris(prev => [...prev, dataUrl]);
+      } catch (error) {
+        console.error('Image manipulation error:', error);
+        Alert.alert(t('common.error'), t('faults.imageProcessingFailed'));
+      }
     }
   };
 
@@ -110,117 +144,145 @@ const removeImage = (index: number) => {
     });
   };
 
-
   // ---------------- UI ----------------
 
   return (
-    <Screen scrollable>
+    <Screen scrollable safeAreaEdges={['left', 'right', 'bottom']}>
       <View style={styles.container}>
         <Text variant="headlineSmall" style={styles.title}>
           {t('faults.createTitle')}
         </Text>
 
-        <Controller
-          control={control}
-          name="title"
-          render={({ field }) => (
-           <TFTextField
-  label={t('faults.title')}
-  value={field.value}
-  onChangeText={field.onChange}
-  onBlur={field.onBlur}
-  error={errors.title ? t(errors.title.message!) : undefined}
-  disabled={loading}
-/>
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="description"
-          render={({ field }) => (
-<TFTextField
-  label={t('faults.description')}
-  value={field.value}
-  onChangeText={field.onChange}
-  onBlur={field.onBlur}
-  multiline
-  numberOfLines={4}
-  error={errors.description ? t(errors.description.message!) : undefined}
-  disabled={loading}
-/>
-
-
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="location"
-          render={({ field }) => (
-           <TFTextField
-  label={t('faults.location')}
-  value={field.value}
-  onChangeText={field.onChange}
-  onBlur={field.onBlur}
-  error={errors.location ? t(errors.location.message!) : undefined}
-  disabled={loading}
-/>
-
-          )}
-        />
-
-        <Controller
-          control={control}
-          name="urgency"
-          render={({ field }) => (
-            <View style={styles.urgencyContainer}>
-              <Text style={styles.label}>{t('faults.urgency')}</Text>
-              <SegmentedButtons
+        <View style={styles.formSection}>
+          <Controller
+            control={control}
+            name="title"
+            render={({ field }) => (
+              <TFTextField
+                label={t('faults.title')}
                 value={field.value}
-                onValueChange={field.onChange}
-                buttons={[
-                  { value: UrgencyLevel.LOW, label: 'Low' },
-                  { value: UrgencyLevel.MEDIUM, label: 'Medium' },
-                  { value: UrgencyLevel.HIGH, label: 'High' },
-                  { value: UrgencyLevel.URGENT, label: 'Urgent' },
-                ]}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.title ? t(errors.title.message!) : undefined}
+                disabled={loading}
               />
-            </View>
-          )}
-        />
+            )}
+          />
 
-        {/* ---------- IMAGES ---------- */}
+          <Controller
+            control={control}
+            name="description"
+            render={({ field }) => (
+              <TFTextField
+                label={t('faults.description')}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                multiline
+                numberOfLines={5}
+                style={styles.descriptionInput}
+                error={errors.description ? t(errors.description.message!) : undefined}
+                disabled={loading}
+              />
+            )}
+          />
+          <View style={styles.descriptionMetaRow}>
+            <Text style={[styles.descriptionMeta, { color: theme.colors.onSurfaceVariant }]}
+            >
+              {t('faults.descriptionMinMax', {
+                min: MIN_DESCRIPTION_LENGTH,
+                max: MAX_DESCRIPTION_LENGTH,
+              })}
+            </Text>
+            <Text
+              style={[
+                styles.descriptionCount,
+                {
+                  color:
+                    descriptionCount < MIN_DESCRIPTION_LENGTH
+                      ? theme.colors.error
+                      : theme.colors.onSurfaceVariant,
+                },
+              ]}
+            >
+              {t('faults.descriptionCount', {
+                current: descriptionCount,
+                max: MAX_DESCRIPTION_LENGTH,
+              })}
+            </Text>
+          </View>
 
-        <Pressable onPress={pickImage} style={styles.addImage}>
-          <Text>➕ Lisää kuva</Text>
-        </Pressable>
+          <Controller
+            control={control}
+            name="location"
+            render={({ field }) => (
+              <TFTextField
+                label={t('faults.location')}
+                value={field.value}
+                onChangeText={field.onChange}
+                onBlur={field.onBlur}
+                error={errors.location ? t(errors.location.message!) : undefined}
+                disabled={loading}
+              />
+            )}
+          />
 
-  <ScrollView horizontal>
-  {imageUris.map((uri, index) => (
-    <Pressable
-      key={index}
-      onLongPress={() => removeImage(index)}
-      style={{ marginRight: 8 }}
-    >
-      <Image source={{ uri }} style={styles.imagePreview} />
-      <Pressable
-        onPress={() => removeImage(index)}
-        style={styles.removeIcon}
-      >
-        <Text style={{ color: 'white' }}>✕</Text>
-      </Pressable>
-    </Pressable>
-  ))}
-</ScrollView>
+          <Controller
+            control={control}
+            name="urgency"
+            render={({ field }) => (
+              <View style={styles.urgencyContainer}>
+                <Text style={styles.label}>{t('faults.urgency')}</Text>
+                <SegmentedButtons
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  buttons={[
+                    { value: UrgencyLevel.LOW, label: t('faults.urgencyLow') },
+                    { value: UrgencyLevel.MEDIUM, label: t('faults.urgencyMedium') },
+                    { value: UrgencyLevel.HIGH, label: t('faults.urgencyHigh') },
+                    { value: UrgencyLevel.URGENT, label: t('faults.urgencyUrgent') },
+                  ]}
+                />
+              </View>
+            )}
+          />
+        </View>
 
+        <View style={styles.imageSection}>
+          <TFButton
+            title={t('faults.addImage')}
+            onPress={pickImage}
+            mode="outlined"
+            icon="image-plus"
+            fullWidth
+            disabled={loading}
+          />
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {imageUris.map((uri, index) => (
+              <Pressable
+                key={index}
+                onLongPress={() => removeImage(index)}
+                style={styles.imageContainer}
+              >
+                <Image source={{ uri }} style={styles.imagePreview} />
+                <Pressable
+                  onPress={() => removeImage(index)}
+                  style={[styles.removeIcon, { backgroundColor: theme.colors.error }]}
+                >
+                  <Text style={styles.removeIconText}>✕</Text>
+                </Pressable>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
         <View style={styles.buttonContainer}>
           <TFButton
             title={t('faults.submit')}
-            onPress={handleSubmit(onSubmit )}
+            onPress={handleSubmit(onSubmit)}
             loading={loading}
             fullWidth
           />
@@ -240,31 +302,74 @@ const removeImage = (index: number) => {
 // ---------------- STYLES ----------------
 
 const styles = StyleSheet.create({
-  container: {},
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 24 },
-  urgencyContainer: { marginBottom: 16 },
-  label: { fontSize: 16, marginBottom: 8, fontWeight: '500' },
-  addImage: { marginVertical: 12 },
+  container: {
+    padding: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  formSection: {
+    gap: 12,
+    marginBottom: 8,
+  },
+  descriptionInput: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  descriptionMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  descriptionMeta: {
+    fontSize: 12,
+  },
+  descriptionCount: {
+    fontSize: 12,
+  },
+  urgencyContainer: {
+    marginTop: 4,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  imageSection: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  imageContainer: {
+    marginRight: 8,
+  },
   imagePreview: {
     width: 80,
     height: 80,
-    marginRight: 8,
-    borderRadius: 6,
+    borderRadius: 12,
   },
-  buttonContainer: { marginTop: 24, gap: 8 },
+  removeIcon: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  removeIconText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  buttonContainer: {
+    marginTop: 16,
+    gap: 8,
+  },
   error: {
     color: '#D32F2F',
     marginTop: 8,
     textAlign: 'center',
   },
-  removeIcon: {
-  position: 'absolute',
-  top: 4,
-  right: 4,
-  backgroundColor: 'rgba(0,0,0,0.6)',
-  borderRadius: 10,
-  paddingHorizontal: 6,
-  paddingVertical: 2,
-},
-
 });

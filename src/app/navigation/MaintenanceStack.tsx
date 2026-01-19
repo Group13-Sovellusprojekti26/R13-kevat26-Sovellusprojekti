@@ -1,9 +1,11 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { MaintenanceDashboardScreen } from '@/features/maintenance/views/MaintenanceDashboardScreen';
+import { MaintenanceTabs } from './MaintenanceTabs';
+import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 
 export type MaintenanceStackParamList = {
-  Dashboard: undefined;
+  Tabs: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<MaintenanceStackParamList>();
@@ -19,8 +21,15 @@ export const MaintenanceStack: React.FC = () => {
       }}
     >
       <Stack.Screen 
-        name="Dashboard" 
-        component={MaintenanceDashboardScreen}
+        name="Tabs" 
+        component={MaintenanceTabs}
+      />
+      <Stack.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          headerShown: true,
+        }}
       />
     </Stack.Navigator>
   );

@@ -1,20 +1,22 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { HousingCompanyDashboardScreen } from '@/features/housingCompany/views/HousingCompanyDashboardScreen';
+import { HousingCompanyTabs } from './HousingCompanyTabs';
 import { CreateResidentInviteScreen } from '@/features/housingCompany/views/CreateResidentInviteScreen';
 import { CreateManagementInviteScreen } from '@/features/housingCompany/views/CreateManagementInviteScreen';
 import { CreateServiceCompanyInviteScreen } from '@/features/housingCompany/views/CreateServiceCompanyInviteScreen';
 import { ResidentListScreen } from '@/features/housingCompany/views/ResidentListScreen';
 import { BuildingResidentsScreen } from '@/features/housingCompany/views/BuildingResidentsScreen';
+import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 
 export type HousingCompanyStackParamList = {
-  Dashboard: undefined;
+  Tabs: undefined;
   CreateResidentInvite: undefined;
   CreateManagementInvite: undefined;
   CreateServiceCompanyInvite: undefined;
   ResidentList: undefined;
   BuildingResidents: { buildingId: string };
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<HousingCompanyStackParamList>();
@@ -32,8 +34,8 @@ export const HousingCompanyStack: React.FC = () => {
       }}
     >
       <Stack.Screen 
-        name="Dashboard" 
-        component={HousingCompanyDashboardScreen}
+        name="Tabs" 
+        component={HousingCompanyTabs}
       />
       <Stack.Screen 
         name="CreateResidentInvite" 
@@ -74,6 +76,14 @@ export const HousingCompanyStack: React.FC = () => {
           headerShown: true,
           title: t('housingCompany.residents.buildingNumber', { number: route.params.buildingId }),
         })}
+      />
+      <Stack.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          headerShown: true,
+          title: t('common.settings'),
+        }}
       />
     </Stack.Navigator>
   );

@@ -5,4 +5,5 @@ export type AdminStackParamList = {
   AdminDashboard: undefined;
   CreateCompany: undefined;
   CompanyDetails: { companyId: string };
+  Settings: undefined;
 };

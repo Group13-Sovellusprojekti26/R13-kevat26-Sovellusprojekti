@@ -109,8 +109,14 @@ export const CreateResidentInviteScreen: React.FC = () => {
                   })}
                 </Text>
                 
-                <View style={styles.codeContainer}>
-                  <Text variant="headlineLarge" style={styles.inviteCode}>
+                <View style={[
+                  styles.codeContainer,
+                  {
+                    backgroundColor: theme.colors.surfaceVariant,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}>
+                  <Text variant="headlineLarge" style={[styles.inviteCode, { color: theme.colors.onSurface }]}>
                     {generatedCode.inviteCode}
                   </Text>
                   <IconButton
@@ -261,6 +267,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   inviteCode: {
     fontWeight: 'bold',

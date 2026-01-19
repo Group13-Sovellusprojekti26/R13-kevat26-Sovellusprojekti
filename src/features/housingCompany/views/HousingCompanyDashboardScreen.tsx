@@ -1,13 +1,11 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
-import { Text, Surface, useTheme, Divider, IconButton, Card } from 'react-native-paper';
+import { Text, Surface, useTheme, Card, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../../shared/components/Screen';
 import { TFButton } from '../../../shared/components/TFButton';
-import { signOut } from '../../auth/services/auth.service';
-import { useAuthVM } from '../../auth/viewmodels/useAuthVM';
 import { useHousingCompanyVM } from '../viewmodels/useHousingCompanyVM';
 import { HousingCompanyStackParamList } from '../../../app/navigation/HousingCompanyStack';
 
@@ -15,41 +13,28 @@ type NavigationProp = NativeStackNavigationProp<HousingCompanyStackParamList>;
 
 /**
  * Dashboard screen for housing company users
- * Shows company info and provides logout functionality
+ * Shows company info and management actions
  */
 export const HousingCompanyDashboardScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuthVM();
   const { 
     managementUser, 
     serviceCompanyUser, 
+    housingCompanyName,
     loadManagementUser, 
     loadServiceCompanyUser,
+    loadUserProfile,
     removeManagementUser: removeManagementUserAction,
     removeServiceCompanyUser: removeServiceCompanyUserAction,
   } = useHousingCompanyVM();
 
   useEffect(() => {
+    loadUserProfile();
     loadManagementUser();
     loadServiceCompanyUser();
-  }, [loadManagementUser, loadServiceCompanyUser]);
-
-  const handleLogout = () => {
-    Alert.alert(
-      t('common.logout'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.logout'), 
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
-  };
+  }, [loadManagementUser, loadServiceCompanyUser, loadUserProfile]);
 
   const handleRemoveManagement = () => {
     Alert.alert(
@@ -96,97 +81,8 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
   };
 
   return (
-    <Screen scrollable>
+    <Screen scrollable safeAreaEdges={['right', 'left']}>
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Surface style={[styles.logoContainer, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
-              <Text style={[styles.logo, { color: theme.colors.primary }]}>🏢</Text>
-            </Surface>
-            <View style={styles.headerText}>
-              <Text variant="headlineSmall" style={styles.title}>
-                {t('housingCompany.dashboard.title')}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                {t('housingCompany.dashboard.subtitle')}
-              </Text>
-            </View>
-          </View>
-          <IconButton
-            icon="logout"
-            size={24}
-            onPress={handleLogout}
-          />
-        </View>
-
-        <Divider style={styles.divider} />
-
-        {/* Management User Card */}
-        {managementUser?.exists && managementUser.user && (
-          <Card style={styles.partnerCard}>
-            <Card.Content>
-              <View style={styles.partnerHeader}>
-                <Text variant="titleMedium" style={styles.partnerTitle}>
-                  {t('housingCompany.management.current')}
-                </Text>
-                <IconButton
-                  icon="delete"
-                  size={20}
-                  iconColor={theme.colors.error}
-                  onPress={handleRemoveManagement}
-                />
-              </View>
-              <Text variant="bodyLarge">{managementUser.user.firstName} {managementUser.user.lastName}</Text>
-              {managementUser.user.companyName && (
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {managementUser.user.companyName}
-                </Text>
-              )}
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                {managementUser.user.email}
-              </Text>
-              {managementUser.user.phone && (
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {managementUser.user.phone}
-                </Text>
-              )}
-            </Card.Content>
-          </Card>
-        )}
-
-        {/* Service Company User Card */}
-        {serviceCompanyUser?.exists && serviceCompanyUser.user && (
-          <Card style={styles.partnerCard}>
-            <Card.Content>
-              <View style={styles.partnerHeader}>
-                <Text variant="titleMedium" style={styles.partnerTitle}>
-                  {t('housingCompany.serviceCompany.current')}
-                </Text>
-                <IconButton
-                  icon="delete"
-                  size={20}
-                  iconColor={theme.colors.error}
-                  onPress={handleRemoveServiceCompany}
-                />
-              </View>
-              <Text variant="bodyLarge">{serviceCompanyUser.user.firstName} {serviceCompanyUser.user.lastName}</Text>
-              {serviceCompanyUser.user.companyName && (
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {serviceCompanyUser.user.companyName}
-                </Text>
-              )}
-              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                {serviceCompanyUser.user.email}
-              </Text>
-              {serviceCompanyUser.user.phone && (
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {serviceCompanyUser.user.phone}
-                </Text>
-              )}
-            </Card.Content>
-          </Card>
-        )}
 
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
@@ -208,7 +104,9 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
         {/* Welcome Card */}
         <Surface style={styles.welcomeCard} elevation={1}>
           <Text variant="titleLarge" style={styles.welcomeTitle}>
-            {t('housingCompany.dashboard.welcome')}
+            {housingCompanyName
+              ? t('housingCompany.dashboard.welcomeWithName', { name: housingCompanyName })
+              : t('housingCompany.dashboard.welcome')}
           </Text>
           <Text variant="bodyMedium" style={[styles.welcomeText, { color: theme.colors.onSurfaceVariant }]}>
             {t('housingCompany.dashboard.welcomeMessage')}
@@ -253,25 +151,79 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
               style={styles.actionButton}
             />
           )}
-          <TFButton
-            title={t('housingCompany.dashboard.manageFaults')}
-            onPress={() => {}}
-            icon="wrench"
-            mode="outlined"
-            fullWidth
-            style={styles.actionButton}
-            disabled
-          />
-          <TFButton
-            title={t('housingCompany.dashboard.manageAnnouncements')}
-            onPress={() => {}}
-            icon="bullhorn"
-            mode="outlined"
-            fullWidth
-            style={styles.actionButton}
-            disabled
-          />
         </View>
+        {(managementUser?.exists || serviceCompanyUser?.exists) && (
+          <View style={styles.partnerSection}>
+            <Text variant="titleMedium" style={styles.partnerSectionTitle}>
+              {t('housingCompany.dashboard.partnersSectionTitle')}
+            </Text>
+
+            {managementUser?.exists && managementUser.user && (
+              <Card style={styles.partnerCard}>
+                <Card.Content>
+                  <View style={styles.partnerHeader}>
+                    <Text variant="titleMedium" style={styles.partnerTitle}>
+                      {t('housingCompany.management.current')}
+                    </Text>
+                    <IconButton
+                      icon="delete"
+                      size={20}
+                      iconColor={theme.colors.error}
+                      onPress={handleRemoveManagement}
+                    />
+                  </View>
+                  <Text variant="bodyLarge">{managementUser.user.firstName} {managementUser.user.lastName}</Text>
+                  {managementUser.user.companyName && (
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {managementUser.user.companyName}
+                    </Text>
+                  )}
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {managementUser.user.email}
+                  </Text>
+                  {managementUser.user.phone && (
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {managementUser.user.phone}
+                    </Text>
+                  )}
+                </Card.Content>
+              </Card>
+            )}
+
+            {/* Service Company User Card */}
+            {serviceCompanyUser?.exists && serviceCompanyUser.user && (
+              <Card style={styles.partnerCard}>
+                <Card.Content>
+                  <View style={styles.partnerHeader}>
+                    <Text variant="titleMedium" style={styles.partnerTitle}>
+                      {t('housingCompany.serviceCompany.current')}
+                    </Text>
+                    <IconButton
+                      icon="delete"
+                      size={20}
+                      iconColor={theme.colors.error}
+                      onPress={handleRemoveServiceCompany}
+                    />
+                  </View>
+                  <Text variant="bodyLarge">{serviceCompanyUser.user.firstName} {serviceCompanyUser.user.lastName}</Text>
+                  {serviceCompanyUser.user.companyName && (
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {serviceCompanyUser.user.companyName}
+                    </Text>
+                  )}
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {serviceCompanyUser.user.email}
+                  </Text>
+                  {serviceCompanyUser.user.phone && (
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {serviceCompanyUser.user.phone}
+                    </Text>
+                  )}
+                </Card.Content>
+              </Card>
+            )}
+          </View>
+        )}
       </View>
     </Screen>
   );
@@ -280,40 +232,6 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  logoContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  logo: {
-    fontSize: 28,
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  subtitle: {
-  },
-  divider: {
-    marginBottom: 24,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -344,6 +262,13 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 12,
+  },
+  partnerSection: {
+    marginTop: 24,
+    gap: 12,
+  },
+  partnerSectionTitle: {
+    fontWeight: '600',
   },
   actionButton: {
   },

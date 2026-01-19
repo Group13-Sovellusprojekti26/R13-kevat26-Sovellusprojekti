@@ -12,16 +12,20 @@ const resources = {
 
 // Get device locale
 const deviceLocale = getLocales()[0]?.languageCode || 'fi';
+const supportedLanguage = deviceLocale === 'en' ? 'en' : 'fi';
 
 // Initialize i18next
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: deviceLocale,
+    lng: supportedLanguage,
     fallbackLng: 'fi',
     interpolation: {
       escapeValue: false, // React already escapes values
+    },
+    react: {
+      useSuspense: false, // Disable suspense to avoid SSR issues
     },
   });
 

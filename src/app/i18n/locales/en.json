@@ -72,9 +72,26 @@
     "location": "Location",
     "submit": "Submit",
     "cancel": "Cancel",
+    "addImage": "Add image",
+    "deleteImage": "Remove image",
+    "deleteImageConfirm": "Are you sure you want to remove this image?",
     "urgent": "Urgent",
     "urgency": "Urgency",
+    "urgencyLow": "Low",
+    "urgencyMedium": "Medium",
+    "urgencyHigh": "High",
+    "urgencyUrgent": "Urgent",
+    "statusOpen": "Open",
+    "statusInProgress": "In progress",
+    "statusResolved": "Resolved",
+    "statusClosed": "Closed",
     "descriptionRequired": "Description is required",
+    "descriptionMinLength": "Description must be at least {{min}} characters",
+    "descriptionMaxLength": "Description must be at most {{max}} characters",
+    "descriptionMinMax": "Min {{min}} / Max {{max}}",
+    "descriptionCount": "{{current}}/{{max}}",
+    "imageBase64Missing": "Image processing failed. Please select the image again.",
+    "imageProcessingFailed": "Image compression failed. Please try again.",
     "locationRequired": "Location is required",
     "titleRequired": "Title is required",
     "createSuccess": "Fault report submitted",
@@ -94,12 +111,30 @@
     "back": "Back",
     "logout": "Log out",
     "copied": "Copied to clipboard",
-    "success": "Success"
+    "success": "Success",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "theme": {
+      "title": "Theme",
+      "description": "Choose the app theme",
+      "light": "Light theme",
+      "dark": "Dark theme"
+    },
+    "language": {
+      "title": "Language",
+      "description": "Choose the app language",
+      "finnish": "Finnish",
+      "english": "English"
+    }
   },
   "admin": {
     "dashboard": {
       "title": "Admin Dashboard",
-      "subtitle": "Manage housing companies"
+      "subtitle": "Manage housing companies",
+      "welcome": "Welcome!",
+      "welcomeMessage": "Here you can manage housing companies and their invite codes."
     },
     "createCompany": "Create Housing Company",
     "createCompanySubtitle": "Fill in the housing company details. The company will register using an invite code.",
@@ -148,7 +183,12 @@
       "tabLabel": "My Page",
       "subtitle": "Welcome to TaloFix",
       "welcome": "Welcome!",
+      "welcomeWithName": "Welcome, {{name}}!",
       "welcomeMessage": "From here you can report faults in your apartment and track the status of your fault reports.",
+      "deleteAccount": "Delete account",
+      "deleteAccountMessage": "This will delete your account, login credentials, and all your fault reports. This action cannot be undone.",
+      "deleteAccountSuccess": "Your account has been deleted",
+      "deleteAccountError": "Failed to delete account",
       "yourInfo": "Your Information",
       "name": "Name",
       "faultReports": "Fault Reports"
@@ -157,13 +197,20 @@
   "housingCompany": {
     "dashboard": {
       "title": "Housing Company Dashboard",
+      "tabLabel": "Dashboard",
       "subtitle": "Welcome to TaloFix",
       "welcome": "Welcome!",
+      "welcomeWithName": "Welcome, {{name}}!",
       "welcomeMessage": "From here you can manage fault reports, announcements and residents.",
+      "partnersSectionTitle": "Additional details",
       "faultReports": "Fault Reports",
       "announcements": "Announcements",
       "manageFaults": "Manage Fault Reports",
-      "manageAnnouncements": "Manage Announcements"
+      "manageFaultsTab": "Fault Reports",
+      "manageAnnouncements": "Manage Announcements",
+      "manageAnnouncementsTab": "Announcements",
+      "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
+      "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here."
     },
     "residents": {
       "title": "Residents",
@@ -197,6 +244,7 @@
         "active": "Registered",
         "expired": "Expired"
       },
+      "registeredResident": "Registered resident",
       "copyCode": "Copy Code",
       "codeCopied": "Invite code copied!",
       "deleteInvite": "Delete Apartment",
@@ -255,7 +303,14 @@
       "title": "Property Management",
       "subtitle": "Welcome to TaloFix",
       "welcome": "Welcome!",
+      "welcomeWithName": "Welcome, {{name}}!",
       "welcomeMessage": "From here you can manage fault reports and announcements.",
+      "manageFaults": "Manage Fault Reports",
+      "manageFaultsTab": "Fault Reports",
+      "manageAnnouncements": "Manage Announcements",
+      "manageAnnouncementsTab": "Announcements",
+      "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
+      "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here.",
       "yourInfo": "Your Information",
       "name": "Name",
       "companyName": "Company",
@@ -265,6 +320,15 @@
   },
   "serviceCompany": {
     "dashboard": "Service Company",
+    "welcome": "Welcome!",
+    "welcomeWithName": "Welcome, {{name}}!",
+    "welcomeMessage": "From here you can manage fault reports and announcements.",
+    "manageFaults": "Manage Fault Reports",
+    "manageFaultsTab": "Fault Reports",
+    "manageAnnouncements": "Manage Announcements",
+    "manageAnnouncementsTab": "Announcements",
+    "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
+    "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here.",
     "welcomeBack": "Welcome back",
     "dashboardSubtitle": "From here you can manage fault reports",
     "yourInfo": "Your Information",

@@ -14,6 +14,7 @@ export interface ResidentInvite {
   isExpired: boolean;
   expiresAt?: string;
   createdAt?: string;
+  residentName?: string;
 }
 
 /**

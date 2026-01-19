@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AdminDashboardScreen } from '../../features/admin/views/AdminDashboardScreen';
 import { CreateCompanyScreen } from '../../features/admin/views/CreateCompanyScreen';
 import { CompanyDetailsScreen } from '../../features/admin/views/CompanyDetailsScreen';
+import { SettingsScreen } from '../../features/settings/views/SettingsScreen';
 import { AdminStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
@@ -18,13 +19,17 @@ export const AdminStack: React.FC = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: true,
+        headerTitleAlign: 'left',
+        headerTitleStyle: {
+          fontSize: 18,
+        },
       }}
     >
       <Stack.Screen
         name="AdminDashboard"
         component={AdminDashboardScreen}
         options={{
-          title: t('admin.dashboard.title'),
+          headerShown: false,
         }}
       />
       <Stack.Screen
@@ -39,6 +44,13 @@ export const AdminStack: React.FC = () => {
         component={CompanyDetailsScreen}
         options={{
           title: t('admin.companyDetails'),
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: t('common.settings'),
         }}
       />
     </Stack.Navigator>

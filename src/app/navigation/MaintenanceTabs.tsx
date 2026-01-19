@@ -6,24 +6,24 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { ResidentStackParamList } from './ResidentStack';
-import { ResidentDashboardScreen } from '../../features/resident/views/ResidentDashboardScreen';
-import { FaultReportListScreen } from '../../features/resident/faultReports/views/FaultReportListScreen';
-import { CreateFaultReportScreen } from '../../features/resident/faultReports/views/CreateFaultReportScreen';
-import { signOut } from '../../features/auth/services/auth.service';
+import type { MaintenanceStackParamList } from './MaintenanceStack';
+import { MaintenanceDashboardScreen } from '@/features/maintenance/views/MaintenanceDashboardScreen';
+import { ManageFaultReportsScreen } from '@/features/maintenance/views/ManageFaultReportsScreen';
+import { ManageAnnouncementsScreen } from '@/features/maintenance/views/ManageAnnouncementsScreen';
+import { signOut } from '@/features/auth/services/auth.service';
 
-export type ResidentTabsParamList = {
+export type MaintenanceTabsParamList = {
   Dashboard: undefined;
-  FaultReports: undefined;
-  CreateFaultReport: undefined;
+  ManageFaultReports: undefined;
+  ManageAnnouncements: undefined;
 };
 
-const Tab = createBottomTabNavigator<ResidentTabsParamList>();
+const Tab = createBottomTabNavigator<MaintenanceTabsParamList>();
 
 /**
- * Bottom tab navigation for resident users
+ * Bottom tab navigation for maintenance users
  */
-export const ResidentTabs: React.FC = () => {
+export const MaintenanceTabs: React.FC = () => {
   const { t } = useTranslation();
 
   const handleLogout = () => {
@@ -50,9 +50,9 @@ export const ResidentTabs: React.FC = () => {
     >
       <Tab.Screen
         name="Dashboard"
-        component={ResidentDashboardScreen}
+        component={MaintenanceDashboardScreen}
         options={{
-          title: t('resident.dashboard.title'),
+          title: t('maintenance.dashboard.title'),
           headerTitleAlign: 'left',
           headerTitleStyle: {
             fontSize: 18,
@@ -63,12 +63,12 @@ export const ResidentTabs: React.FC = () => {
           headerRightContainerStyle: {
             paddingRight: 4,
           },
-          tabBarLabel: t('resident.dashboard.tabLabel'),
+          tabBarLabel: t('maintenance.dashboard.title'),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home" size={size} color={color} />
           ),
           headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
+            const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
             return (
               <View style={styles.headerActions}>
                 <IconButton
@@ -85,10 +85,10 @@ export const ResidentTabs: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="FaultReports"
-        component={FaultReportListScreen}
+        name="ManageFaultReports"
+        component={ManageFaultReportsScreen}
         options={{
-          title: t('faults.title'),
+          title: t('maintenance.dashboard.manageFaults'),
           headerTitleAlign: 'left',
           headerTitleStyle: {
             fontSize: 18,
@@ -99,12 +99,12 @@ export const ResidentTabs: React.FC = () => {
           headerRightContainerStyle: {
             paddingRight: 4,
           },
-          tabBarLabel: t('faults.title'),
+          tabBarLabel: t('maintenance.dashboard.manageFaultsTab'),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="clipboard-list" size={size} color={color} />
+            <MaterialCommunityIcons name="wrench" size={size} color={color} />
           ),
           headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
+            const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
             return (
               <View style={styles.headerActions}>
                 <IconButton
@@ -121,10 +121,10 @@ export const ResidentTabs: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="CreateFaultReport"
-        component={CreateFaultReportScreen}
+        name="ManageAnnouncements"
+        component={ManageAnnouncementsScreen}
         options={{
-          title: t('faults.createTitle'),
+          title: t('maintenance.dashboard.manageAnnouncements'),
           headerTitleAlign: 'left',
           headerTitleStyle: {
             fontSize: 18,
@@ -135,12 +135,12 @@ export const ResidentTabs: React.FC = () => {
           headerRightContainerStyle: {
             paddingRight: 4,
           },
-          tabBarLabel: t('faults.createTitle'),
+          tabBarLabel: t('maintenance.dashboard.manageAnnouncementsTab'),
           tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="plus-circle" size={size} color={color} />
+            <MaterialCommunityIcons name="bullhorn" size={size} color={color} />
           ),
           headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
+            const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
             return (
               <View style={styles.headerActions}>
                 <IconButton

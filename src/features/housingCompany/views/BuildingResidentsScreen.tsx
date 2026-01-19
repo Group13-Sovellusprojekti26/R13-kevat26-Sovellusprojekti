@@ -130,7 +130,7 @@ export const BuildingResidentsScreen: React.FC = () => {
 
   const renderInviteCard = ({ item }: { item: ResidentInvite }) => (
     <Pressable 
-      onLongPress={() => copyToClipboard(item.inviteCode)}
+      onLongPress={item.isUsed ? undefined : () => copyToClipboard(item.inviteCode)}
       delayLongPress={500}
     >
       <Card style={styles.card}>
@@ -152,23 +152,43 @@ export const BuildingResidentsScreen: React.FC = () => {
             )}
           </View>
           
-          <Pressable onLongPress={() => copyToClipboard(item.inviteCode)} delayLongPress={300}>
-            <View style={styles.codeContainer}>
-              <Text variant="headlineSmall" style={[
-                styles.inviteCode,
-                item.isUsed && styles.usedCode,
-                item.isExpired && !item.isUsed && styles.expiredCode,
-              ]}>
-                {item.inviteCode}
+          {item.isUsed ? (
+            <View style={[
+              styles.codeContainer,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outlineVariant,
+              },
+            ]}>
+              <Text variant="titleMedium" style={[styles.residentName, { color: theme.colors.onSurface }]}>
+                {item.residentName || t('housingCompany.residents.registeredResident')}
               </Text>
-              <IconButton
-                icon="content-copy"
-                size={18}
-                onPress={() => copyToClipboard(item.inviteCode)}
-                style={styles.copyButton}
-              />
             </View>
-          </Pressable>
+          ) : (
+            <Pressable onLongPress={() => copyToClipboard(item.inviteCode)} delayLongPress={300}>
+              <View style={[
+                styles.codeContainer,
+                {
+                  backgroundColor: theme.colors.surfaceVariant,
+                  borderColor: theme.colors.outlineVariant,
+                },
+              ]}>
+                <Text variant="headlineSmall" style={[
+                  styles.inviteCode,
+                  { color: theme.colors.onSurface },
+                  item.isExpired && styles.expiredCode,
+                ]}>
+                  {item.inviteCode}
+                </Text>
+                <IconButton
+                  icon="content-copy"
+                  size={18}
+                  onPress={() => copyToClipboard(item.inviteCode)}
+                  style={styles.copyButton}
+                />
+              </View>
+            </Pressable>
+          )}
           
           {item.expiresAt && !item.isUsed && (
             <Text variant="bodySmall" style={[
@@ -291,8 +311,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F5F5F5',
     borderRadius: 8,
+    borderWidth: 1,
     paddingLeft: 16,
     paddingVertical: 8,
     marginVertical: 8,
@@ -301,8 +321,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 2,
   },
-  usedCode: {
-    opacity: 0.5,
+  residentName: {
+    fontWeight: '600',
   },
   expiredCode: {
     opacity: 0.5,

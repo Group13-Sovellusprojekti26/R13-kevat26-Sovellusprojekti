@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Share, Alert, Pressable } from 'react-native';
-import { Text, Card, Divider, ActivityIndicator, Chip, IconButton } from 'react-native-paper';
+import { Text, Card, Divider, ActivityIndicator, Chip, IconButton, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { Screen } from '../../../shared/components/Screen';
@@ -17,6 +17,7 @@ type CompanyDetailsRouteProp = RouteProp<AdminStackParamList, 'CompanyDetails'>;
  */
 export const CompanyDetailsScreen: React.FC = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const route = useRoute<CompanyDetailsRouteProp>();
   const navigation = useNavigation();
   const { companyId } = route.params;
@@ -186,8 +187,14 @@ export const CompanyDetailsScreen: React.FC = () => {
                 {t('admin.currentInviteCode')}
               </Text>
               <Pressable onLongPress={() => copyInviteCode(company.inviteCode!)} android_ripple={{ color: '#eee' }}>
-                <View style={styles.codeContainer}>
-                  <Text variant="headlineMedium" style={[styles.inviteCode, { flex: 1 }] }>
+                <View style={[
+                  styles.codeContainer,
+                  {
+                    backgroundColor: theme.colors.surfaceVariant,
+                    borderColor: theme.colors.outlineVariant,
+                  },
+                ]}>
+                  <Text variant="headlineMedium" style={[styles.inviteCode, { flex: 1, color: theme.colors.onSurface }] }>
                     {company.inviteCode}
                   </Text>
                   <IconButton
@@ -329,6 +336,10 @@ const styles = StyleSheet.create({
   codeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   expiresAt: {
     opacity: 0.7,
