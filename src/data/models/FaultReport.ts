@@ -3,7 +3,10 @@ import { FaultReportStatus, UrgencyLevel } from './enums';
 export interface FaultReport {
   id: string;
   userId: string;
+  createdByUserId: string;
+  apartmentId?: string;
   buildingId: string;
+  housingCompanyId: string;
   apartmentNumber?: string;
   title: string;
   description: string;

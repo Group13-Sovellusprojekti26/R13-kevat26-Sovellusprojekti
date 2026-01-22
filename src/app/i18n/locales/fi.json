@@ -70,11 +70,19 @@
   "faults": {
     "title": "Vikailmoitukset",
     "createTitle": "Uusi vikailmoitus",
+    "editTitle": "Muokkaa vikailmoitusta",
+    "detailTitle": "Vikailmoitus",
     "description": "Kuvaus",
     "location": "Sijainti",
     "submit": "Lähetä",
+    "update": "Tallenna muutokset",
     "cancel": "Peruuta",
+    "close": "Peruuta vikailmoitus",
+    "closeTitle": "Peruuta vikailmoitus",
+    "closeConfirm": "Haluatko varmasti peruuttaa tämän vikailmoituksen?",
+    "closeAction": "Peruuta",
     "addImage": "Lisää kuva",
+    "images": "Kuvat",
     "deleteImage": "Poista kuva",
     "deleteImageConfirm": "Haluatko varmasti poistaa tämän kuvan?",
     "urgent": "Kiireellinen",
@@ -87,6 +95,10 @@
     "statusInProgress": "Käsittelyssä",
     "statusResolved": "Ratkaistu",
     "statusClosed": "Suljettu",
+    "statusCancelled": "Peruttu",
+    "filterOpen": "Avoin",
+    "filterClosed": "Suljettu / Peruttu",
+    "filterAll": "Kaikki",
     "descriptionRequired": "Kuvaus on pakollinen",
     "descriptionMinLength": "Kuvauksen tulee olla vähintään {{min}} merkkiä",
     "descriptionMaxLength": "Kuvaus saa olla enintään {{max}} merkkiä",
@@ -98,7 +110,13 @@
     "titleRequired": "Otsikko on pakollinen",
     "createSuccess": "Vikailmoitus lähetetty",
     "createError": "Vikailmoituksen lähetys epäonnistui",
+    "updateSuccess": "Vikailmoitus päivitetty",
+    "updateError": "Vikailmoituksen päivitys epäonnistui",
+    "createdAt": "Luotu",
     "noReports": "Ei vikailmoituksia"
+  },
+  "faultReport": {
+    "updateSuccess": "Muutokset tallennettu"
   },
   "common": {
     "loading": "Ladataan...",
@@ -187,13 +205,16 @@
       "welcome": "Tervetuloa!",
       "welcomeWithName": "Tervetuloa, {{name}}!",
       "welcomeMessage": "Täältä voit raportoida vikoja asunnossasi ja seurata vikailmoitustesi tilaa.",
+      "welcomeCreateMessage": "Täältä voit ilmoittaa uudesta viasta asunnossasi.",
+      "createFaultReport": "Tee vikailmoitus",
       "deleteAccount": "Poista tili",
       "deleteAccountMessage": "Tämä poistaa tilisi, kirjautumistiedot ja kaikki sinun vikailmoituksesi. Tätä toimintoa ei voi perua.",
       "deleteAccountSuccess": "Tilisi on poistettu",
       "deleteAccountError": "Tilin poistaminen epäonnistui",
       "yourInfo": "Tietosi",
       "name": "Nimi",
-      "faultReports": "Vikailmoitukset"
+      "faultReports": "Vikailmoitukset",
+      "faultReportsHelper": "Näytä ja muokkaa omia vikailmoituksia"
     }
   },
   "housingCompany": {
@@ -207,6 +228,8 @@
       "partnersSectionTitle": "Lisätiedot",
       "faultReports": "Vikailmoitukset",
       "announcements": "Tiedotteet",
+      "openFaults": "Avoimet vikailmoitukset",
+      "completedFaults": "Valmiit vikailmoitukset",
       "manageFaults": "Hallinnoi vikailmoituksia",
       "manageFaultsTab": "Vikailmoitukset",
       "manageAnnouncements": "Hallinnoi tiedotteita",

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { FaultReport } from '../../../../data/models/FaultReport';
-import { getFaultReportsByUser } from '../../../../data/repositories/faultReports.repo';
+import { getFaultReportsForRole } from '../../../../data/repositories/faultReports.repo';
 import { getCurrentUser } from '../../../auth/services/auth.service';
 import { parseFirebaseError, logError } from '../../../../shared/utils/errors';
 
@@ -41,7 +41,7 @@ export const useFaultReportListVM = create<FaultReportListVM>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const reports = await getFaultReportsByUser(); // No argument
+      const reports = await getFaultReportsForRole();
       set({ reports, loading: false, error: null });
     } catch (error: any) {
       const errorMessage = parseFirebaseError(error);

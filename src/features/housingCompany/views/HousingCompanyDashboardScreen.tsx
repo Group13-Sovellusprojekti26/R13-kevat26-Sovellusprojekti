@@ -1,13 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { Text, Surface, useTheme, Card, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../../shared/components/Screen';
 import { TFButton } from '../../../shared/components/TFButton';
 import { useHousingCompanyVM } from '../viewmodels/useHousingCompanyVM';
 import { HousingCompanyStackParamList } from '../../../app/navigation/HousingCompanyStack';
+import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
+import { FaultReportStatus } from '@/data/models/enums';
 
 type NavigationProp = NativeStackNavigationProp<HousingCompanyStackParamList>;
 
@@ -29,12 +31,29 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
     removeManagementUser: removeManagementUserAction,
     removeServiceCompanyUser: removeServiceCompanyUserAction,
   } = useHousingCompanyVM();
+  const reports = useCompanyFaultReportsVM(state => state.reports);
+  const loadReports = useCompanyFaultReportsVM(state => state.loadReports);
 
   useEffect(() => {
     loadUserProfile();
     loadManagementUser();
     loadServiceCompanyUser();
   }, [loadManagementUser, loadServiceCompanyUser, loadUserProfile]);
+
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [loadReports])
+  );
+
+  const openCount = reports.filter(report => report.status === FaultReportStatus.OPEN).length;
+  const completedCount = reports.filter(
+    report => report.status === FaultReportStatus.CLOSED || report.status === FaultReportStatus.CANCELLED
+  ).length;
 
   const handleRemoveManagement = () => {
     Alert.alert(
@@ -87,16 +106,16 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
-            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.primary }]}>0</Text>
+            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{openCount}</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onPrimaryContainer }}>
-              {t('housingCompany.dashboard.faultReports')}
+              {t('housingCompany.dashboard.openFaults')}
             </Text>
           </Surface>
 
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={0}>
-            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.tertiary }]}>0</Text>
+            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.tertiary }]}>{completedCount}</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onTertiaryContainer }}>
-              {t('housingCompany.dashboard.announcements')}
+              {t('housingCompany.dashboard.completedFaults')}
             </Text>
           </Surface>
         </View>

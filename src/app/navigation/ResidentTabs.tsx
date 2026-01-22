@@ -15,7 +15,7 @@ import { signOut } from '../../features/auth/services/auth.service';
 export type ResidentTabsParamList = {
   Dashboard: undefined;
   FaultReports: undefined;
-  CreateFaultReport: undefined;
+  CreateFaultReport: { faultReportId?: string } | undefined;
 };
 
 const Tab = createBottomTabNavigator<ResidentTabsParamList>();
