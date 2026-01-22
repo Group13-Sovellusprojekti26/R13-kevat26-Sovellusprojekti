@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable, Alert } from 'react-native';
 import { Text, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
@@ -7,14 +7,15 @@ import { z } from 'zod';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 
 import { Screen } from '../../../../shared/components/Screen';
 import { TFButton } from '../../../../shared/components/TFButton';
 import { TFTextField } from '../../../../shared/components/TFTextField';
 import { useCreateFaultReportVM } from '../viewmodels/useCreateFaultReportVM';
-import { UrgencyLevel } from '../../../../data/models/enums';
+import { FaultReportStatus, UrgencyLevel } from '../../../../data/models/enums';
 import { haptic } from '../../../../shared/utils/haptics';
+import type { ResidentTabsParamList } from '../../../../app/navigation/ResidentTabs';
 
 // ---------------- VALIDATION ----------------
 
@@ -39,10 +40,21 @@ export const CreateFaultReportScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const navigation = useNavigation();
-  const { loading, error, success, submitReport, clearError, reset } =
+  const route = useRoute<RouteProp<ResidentTabsParamList, 'CreateFaultReport'>>();
+  const { loading, error, success, submitReport, clearError, reset, loadReport, updateReport, closeReport, report } =
     useCreateFaultReportVM();
 
+  const faultReportId = route.params?.faultReportId;
+  const isEditMode = useMemo(() => Boolean(faultReportId), [faultReportId]);
+  const isEditable = !isEditMode || report?.status === FaultReportStatus.OPEN;
+
   const [imageUris, setImageUris] = useState<string[]>([]);
+  const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
+  const dedupeUrls = (urls: string[]) => Array.from(new Set(urls));
+  const mergedExistingImageUrls = useMemo(
+    () => dedupeUrls([...(report?.imageUrls ?? []), ...existingImageUrls]),
+    [existingImageUrls, report?.imageUrls]
+  );
   const removeImage = (index: number) => {
     Alert.alert(
       t('faults.deleteImage'),
@@ -79,12 +91,69 @@ export const CreateFaultReportScreen: React.FC = () => {
   });
 
   useEffect(() => {
-    if (success) {
+    if (faultReportId) {
+      loadReport(faultReportId);
+    }
+  }, [faultReportId, loadReport]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (faultReportId) {
+        return;
+      }
+
+      resetForm({
+        title: '',
+        description: '',
+        location: '',
+        urgency: UrgencyLevel.MEDIUM,
+      });
+      setExistingImageUrls([]);
+      setImageUris([]);
+      reset();
+    }, [faultReportId, resetForm, reset])
+  );
+
+  useEffect(() => {
+    if (report && isEditMode) {
+      resetForm({
+        title: report.title,
+        description: report.description,
+        location: report.location,
+        urgency: report.urgency,
+      });
+      setExistingImageUrls(dedupeUrls(report.imageUrls ?? []));
+      setImageUris([]);
+    }
+  }, [isEditMode, report, resetForm]);
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setExistingImageUrls([]);
+      setImageUris([]);
+    }
+  }, [isEditMode]);
+
+  useEffect(() => {
+    if (success && !isEditMode) {
+      const handleAfterSave = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return;
+        }
+        navigation.navigate('FaultReports');
+      };
+
+      Alert.alert(t('faults.createSuccess'), t('faults.createSuccess'), [
+        {
+          text: t('common.ok'),
+          onPress: handleAfterSave,
+        },
+      ]);
       resetForm();
       reset();
-      navigation.goBack();
     }
-  }, [navigation, reset, resetForm, success]);
+  }, [isEditMode, navigation, reset, resetForm, success, t]);
 
   const descriptionValue = watch('description');
   const descriptionCount = descriptionValue?.length ?? 0;
@@ -125,7 +194,7 @@ export const CreateFaultReportScreen: React.FC = () => {
         }
 
         const dataUrl = `data:image/webp;base64,${manipulatedImage.base64}`;
-        setImageUris(prev => [...prev, dataUrl]);
+        setImageUris(prev => (prev.includes(dataUrl) ? prev : [...prev, dataUrl]));
       } catch (error) {
         console.error('Image manipulation error:', error);
         Alert.alert(t('common.error'), t('faults.imageProcessingFailed'));
@@ -136,12 +205,71 @@ export const CreateFaultReportScreen: React.FC = () => {
   // ---------------- SUBMIT (HERE) ----------------
 
   const onSubmit = async (data: CreateFaultReportFormData) => {
+    if (loading) {
+      return;
+    }
     clearError();
+
+    if (isEditMode && faultReportId) {
+      try {
+        const uniqueImageUris = dedupeUrls(imageUris);
+        const uniqueExistingUrls = dedupeUrls(mergedExistingImageUrls);
+        const descriptionToSend = report && data.description.trim() === report.description.trim()
+          ? undefined
+          : data.description;
+        const imageUrisToSend = uniqueImageUris.length > 0 ? uniqueImageUris : undefined;
+        const existingUrlsToSend = uniqueExistingUrls;
+        const ok = await updateReport({
+          id: faultReportId,
+          description: descriptionToSend,
+          imageUris: imageUrisToSend,
+          existingImageUrls: existingUrlsToSend,
+        });
+        if (ok) {
+          Alert.alert(t('faults.updateSuccess'), t('faultReport.updateSuccess'), [
+            {
+              text: t('common.ok'),
+              onPress: () => {
+                navigation.navigate('FaultReports');
+              },
+            },
+          ]);
+        }
+      } catch (updateError) {
+        Alert.alert(t('common.error'), t('faults.updateError'));
+      }
+      return;
+    }
 
     await submitReport({
       ...data,
-      imageUris,
+      imageUris: dedupeUrls(imageUris),
     });
+  };
+
+  const handleClose = async () => {
+    if (!faultReportId) {
+      return;
+    }
+
+    Alert.alert(
+      t('faults.closeTitle'),
+      t('faults.closeConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('faults.closeAction'),
+          style: 'destructive',
+          onPress: async () => {
+            clearError();
+            const ok = await closeReport(faultReportId);
+            if (ok) {
+              navigation.goBack();
+            }
+          },
+        },
+      ]
+    );
   };
 
   // ---------------- UI ----------------
@@ -150,7 +278,7 @@ export const CreateFaultReportScreen: React.FC = () => {
     <Screen scrollable safeAreaEdges={['left', 'right', 'bottom']}>
       <View style={styles.container}>
         <Text variant="headlineSmall" style={styles.title}>
-          {t('faults.createTitle')}
+          {isEditMode ? t('faults.editTitle') : t('faults.createTitle')}
         </Text>
 
         <View style={styles.formSection}>
@@ -164,7 +292,7 @@ export const CreateFaultReportScreen: React.FC = () => {
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
                 error={errors.title ? t(errors.title.message!) : undefined}
-                disabled={loading}
+                disabled={loading || isEditMode || !isEditable}
               />
             )}
           />
@@ -182,7 +310,7 @@ export const CreateFaultReportScreen: React.FC = () => {
                 numberOfLines={5}
                 style={styles.descriptionInput}
                 error={errors.description ? t(errors.description.message!) : undefined}
-                disabled={loading}
+                disabled={loading || !isEditable}
               />
             )}
           />
@@ -222,7 +350,7 @@ export const CreateFaultReportScreen: React.FC = () => {
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
                 error={errors.location ? t(errors.location.message!) : undefined}
-                disabled={loading}
+                disabled={loading || isEditMode || !isEditable}
               />
             )}
           />
@@ -236,6 +364,7 @@ export const CreateFaultReportScreen: React.FC = () => {
                 <SegmentedButtons
                   value={field.value}
                   onValueChange={field.onChange}
+                  disabled={loading || isEditMode || !isEditable}
                   buttons={[
                     { value: UrgencyLevel.LOW, label: t('faults.urgencyLow') },
                     { value: UrgencyLevel.MEDIUM, label: t('faults.urgencyMedium') },
@@ -248,6 +377,19 @@ export const CreateFaultReportScreen: React.FC = () => {
           />
         </View>
 
+        {isEditMode && existingImageUrls.length > 0 && (
+          <View style={styles.imageSection}>
+            <Text style={styles.label}>{t('faults.images')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {existingImageUrls.map((uri, index) => (
+                <Pressable key={`${uri}-${index}`} style={styles.imageContainer}>
+                  <Image source={{ uri }} style={styles.imagePreview} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <View style={styles.imageSection}>
           <TFButton
             title={t('faults.addImage')}
@@ -255,7 +397,7 @@ export const CreateFaultReportScreen: React.FC = () => {
             mode="outlined"
             icon="image-plus"
             fullWidth
-            disabled={loading}
+            disabled={loading || !isEditable}
           />
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -280,12 +422,25 @@ export const CreateFaultReportScreen: React.FC = () => {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <View style={styles.buttonContainer}>
-          <TFButton
-            title={t('faults.submit')}
-            onPress={handleSubmit(onSubmit)}
-            loading={loading}
-            fullWidth
-          />
+          {isEditable && (
+            <TFButton
+              title={isEditMode ? t('faults.update') : t('faults.submit')}
+              onPress={handleSubmit(onSubmit)}
+              loading={loading}
+              fullWidth
+            />
+          )}
+          {isEditMode && (
+            <TFButton
+              title={t('faults.close')}
+              onPress={handleClose}
+              mode="outlined"
+              textColor={theme.colors.error}
+              disabled={loading || !isEditable}
+              fullWidth
+              style={styles.deleteButton}
+            />
+          )}
           <TFButton
             title={t('faults.cancel')}
             onPress={() => navigation.goBack()}
@@ -366,6 +521,9 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 16,
     gap: 8,
+  },
+  deleteButton: {
+    marginTop: 4,
   },
   error: {
     color: '#D32F2F',

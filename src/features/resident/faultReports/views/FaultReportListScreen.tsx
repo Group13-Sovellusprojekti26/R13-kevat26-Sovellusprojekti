@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Image, ScrollView, Pressable } from 'react-native';
-import { Text, Card, Chip, useTheme } from 'react-native-paper';
+import { Text, Card, Chip, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../../../shared/components/Screen';
@@ -20,6 +20,17 @@ export const FaultReportListScreen: React.FC = () => {
   const { t } = useTranslation();
   const { reports, loading, error, refreshing, loadReports, refresh } = useFaultReportListVM();
   const navigation = useNavigation<any>();
+  const [filter, setFilter] = useState<'open' | 'closed' | 'all'>('open');
+
+  const handleEdit = useCallback(
+    (reportId?: string) => {
+      if (!reportId) {
+        return;
+      }
+      navigation.navigate('CreateFaultReport', { faultReportId: reportId });
+    },
+    [navigation]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -37,10 +48,26 @@ export const FaultReportListScreen: React.FC = () => {
         return t('faults.statusResolved');
       case FaultReportStatus.CLOSED:
         return t('faults.statusClosed');
+      case FaultReportStatus.CANCELLED:
+        return t('faults.statusCancelled');
       default:
         return status;
     }
   };
+  const filteredReports = useMemo(() => {
+    if (filter === 'all') {
+      return reports;
+    }
+
+    if (filter === 'open') {
+      return reports.filter(report => report.status === FaultReportStatus.OPEN);
+    }
+
+    return reports.filter(
+      report => report.status === FaultReportStatus.CLOSED || report.status === FaultReportStatus.CANCELLED
+    );
+  }, [filter, reports]);
+
 
   const getUrgencyLabel = (urgency: UrgencyLevel): string => {
     switch (urgency) {
@@ -58,7 +85,10 @@ export const FaultReportListScreen: React.FC = () => {
   };
 
   const renderItem = ({ item }: { item: FaultReport }) => (
-    <Card style={styles.card}>
+    <Card
+      style={styles.card}
+      onPress={() => handleEdit(item.id)}
+    >
       <Card.Content>
         <View style={styles.header}>
           <Text variant="titleLarge" style={styles.title}>{item.title}</Text>
@@ -131,10 +161,23 @@ export const FaultReportListScreen: React.FC = () => {
   return (
     <Screen safeAreaEdges={['left', 'right', 'bottom']}>
       <FlatList
-        data={reports}
+        data={filteredReports}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.filterContainer}>
+            <SegmentedButtons
+              value={filter}
+              onValueChange={(value) => setFilter(value as 'open' | 'closed' | 'all')}
+              buttons={[
+                { value: 'open', label: t('faults.filterOpen') },
+                { value: 'closed', label: t('faults.filterClosed') },
+                { value: 'all', label: t('faults.filterAll') },
+              ]}
+            />
+          </View>
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
@@ -153,6 +196,9 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 96,
+  },
+  filterContainer: {
+    marginBottom: 12,
   },
   card: {
     marginBottom: 12,

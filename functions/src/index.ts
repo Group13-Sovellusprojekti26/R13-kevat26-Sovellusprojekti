@@ -149,7 +149,8 @@ export const uploadFaultReportImage = onCall(
     else if (contentType === "image/webp") extension = ".webp";
     else if (contentType === "image/heic") extension = ".heic";
 
-    const filePath = `faultReports/${faultReportId}/image_${imageIndex}${extension}`;
+    const uniqueSuffix = `${Date.now()}_${Math.floor(Math.random() * 1_000_000)}`;
+    const filePath = `faultReports/${faultReportId}/image_${imageIndex}_${uniqueSuffix}${extension}`;
 
     try {
       // Decode base64 and upload to Storage
@@ -224,6 +225,88 @@ export const updateFaultReportStatus = onCall(
           admin.firestore.FieldValue.serverTimestamp() :
           report?.resolvedAt ?? null,
     });
+
+    return {ok: true};
+  }
+);
+
+/**
+ * Updates a fault report description and images.
+ * Residents can update only their own reports while status is open.
+ *
+ * @param {string} faultReportId - Fault report document ID
+ * @param {string} description - Updated description
+ * @param {string[]} imageUrls - Updated image URLs list
+ * @returns {boolean} ok - Success indicator
+ */
+export const updateFaultReportDetails = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {housingCompanyId} = await getUserProfile(uid);
+
+    const {faultReportId, description, imageUrls} = request.data || {};
+
+    if (typeof faultReportId !== "string") {
+      throw new HttpsError("invalid-argument", "Missing fault report ID.");
+    }
+
+    if (
+      typeof description !== "string" &&
+      (!Array.isArray(imageUrls) || imageUrls.length === 0)
+    ) {
+      throw new HttpsError("invalid-argument", "No updates provided.");
+    }
+
+    if (typeof description === "string" && description.trim().length === 0) {
+      throw new HttpsError("invalid-argument", "Description is required.");
+    }
+
+    if (Array.isArray(imageUrls) && !imageUrls.every((url) => typeof url === "string")) {
+      throw new HttpsError("invalid-argument", "Invalid image URLs.");
+    }
+
+    const docRef = db.collection("faultReports").doc(faultReportId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Fault report not found.");
+    }
+
+    const report = snap.data();
+    if (report?.housingCompanyId !== housingCompanyId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Cross-company access blocked."
+      );
+    }
+
+    if (report?.createdBy !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "You can only update your own fault reports."
+      );
+    }
+
+    if (report?.status !== "open") {
+      throw new HttpsError(
+        "failed-precondition",
+        "Only open fault reports can be updated."
+      );
+    }
+
+    const updates: Record<string, unknown> = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    if (typeof description === "string") {
+      updates.description = description.trim();
+    }
+
+    if (Array.isArray(imageUrls)) {
+      updates.imageUrls = imageUrls;
+    }
+
+    await docRef.update(updates);
 
     return {ok: true};
   }

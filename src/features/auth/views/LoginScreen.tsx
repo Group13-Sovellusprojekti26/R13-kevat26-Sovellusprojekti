@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Modal } from 'react-native';
+import { View, StyleSheet, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Text, Divider, Surface, useTheme } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,8 +79,17 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <Screen scrollable>
-      <View style={styles.container}>
+    <Screen>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <Surface style={[styles.logoContainer, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
@@ -168,7 +177,9 @@ export const LoginScreen: React.FC = () => {
           fullWidth
           style={styles.inviteButton}
         />
-      </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Invite Type Selection Modal */}
       <Modal
@@ -242,6 +253,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 32,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   heroSection: {
     alignItems: 'center',

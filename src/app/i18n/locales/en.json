@@ -68,11 +68,19 @@
   "faults": {
     "title": "Fault Reports",
     "createTitle": "New Fault Report",
+    "editTitle": "Edit fault report",
+    "detailTitle": "Fault report",
     "description": "Description",
     "location": "Location",
     "submit": "Submit",
+    "update": "Save changes",
     "cancel": "Cancel",
+    "close": "Cancel fault report",
+    "closeTitle": "Cancel fault report",
+    "closeConfirm": "Are you sure you want to cancel this fault report?",
+    "closeAction": "Cancel",
     "addImage": "Add image",
+    "images": "Images",
     "deleteImage": "Remove image",
     "deleteImageConfirm": "Are you sure you want to remove this image?",
     "urgent": "Urgent",
@@ -85,6 +93,10 @@
     "statusInProgress": "In progress",
     "statusResolved": "Resolved",
     "statusClosed": "Closed",
+    "statusCancelled": "Cancelled",
+    "filterOpen": "Open",
+    "filterClosed": "Closed / Cancelled",
+    "filterAll": "All",
     "descriptionRequired": "Description is required",
     "descriptionMinLength": "Description must be at least {{min}} characters",
     "descriptionMaxLength": "Description must be at most {{max}} characters",
@@ -96,7 +108,13 @@
     "titleRequired": "Title is required",
     "createSuccess": "Fault report submitted",
     "createError": "Failed to submit fault report",
+    "updateSuccess": "Fault report updated",
+    "updateError": "Failed to update fault report",
+    "createdAt": "Created",
     "noReports": "No fault reports"
+  },
+  "faultReport": {
+    "updateSuccess": "Changes saved"
   },
   "common": {
     "loading": "Loading...",
@@ -185,13 +203,16 @@
       "welcome": "Welcome!",
       "welcomeWithName": "Welcome, {{name}}!",
       "welcomeMessage": "From here you can report faults in your apartment and track the status of your fault reports.",
+      "welcomeCreateMessage": "From here you can report a new fault in your apartment.",
+      "createFaultReport": "Create fault report",
       "deleteAccount": "Delete account",
       "deleteAccountMessage": "This will delete your account, login credentials, and all your fault reports. This action cannot be undone.",
       "deleteAccountSuccess": "Your account has been deleted",
       "deleteAccountError": "Failed to delete account",
       "yourInfo": "Your Information",
       "name": "Name",
-      "faultReports": "Fault Reports"
+      "faultReports": "Fault Reports",
+      "faultReportsHelper": "View and edit your fault reports"
     }
   },
   "housingCompany": {
@@ -210,7 +231,9 @@
       "manageAnnouncements": "Manage Announcements",
       "manageAnnouncementsTab": "Announcements",
       "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
-      "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here."
+      "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here.",
+      "openFaults": "Open Fault Reports",
+      "completedFaults": "Completed Fault Reports"
     },
     "residents": {
       "title": "Residents",

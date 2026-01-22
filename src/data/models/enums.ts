@@ -4,6 +4,7 @@ export enum FaultReportStatus {
   IN_PROGRESS = 'in_progress',
   RESOLVED = 'resolved',
   CLOSED = 'closed',
+  CANCELLED = 'cancelled',
 }
 
 // Urgency levels

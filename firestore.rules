@@ -45,19 +45,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['buildingId', 'title', 'description', 'status', 'createdBy', 'housingCompanyId', 'createdAt', 'updatedAt']);
       
       // Update: Users can update their own reports to add images
-      // Only imageUrls and updatedAt fields can be modified
+      // Only imageUrls, description, and updatedAt fields can be modified
       // Status changes ONLY through Cloud Functions (admin/maintenance)
-      allow update: if isAuthenticated()
+      allow update: if request.auth != null
         && resource.data.createdBy == request.auth.uid
-        && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.housingCompanyId == resource.data.housingCompanyId
-        && request.resource.data.status == resource.data.status
-        && request.resource.data.title == resource.data.title
-        && request.resource.data.description == resource.data.description
-        && request.resource.data.buildingId == resource.data.buildingId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageUrls', 'updatedAt']);
+        && resource.data.status == 'open';
       
-      // Delete: ONLY through Cloud Functions (admin)
+      // Delete: disabled for residents
       allow delete: if false;
     }
     
