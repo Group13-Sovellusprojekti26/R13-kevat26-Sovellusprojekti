@@ -17,9 +17,13 @@ export {
 
 const db = admin.firestore();
 
-
-
-type UserRole = "resident" | "admin" | "maintenance" | "property_manager" | "housing_company";
+type UserRole =
+  | "resident"
+  | "admin"
+  | "maintenance"
+  | "property_manager"
+  | "housing_company"
+  | "service_company";
 
 type UserProfile = {
   housingCompanyId: string;
@@ -60,7 +64,7 @@ const getUserProfile = async (uid: string): Promise<UserProfile> => {
       "User profile incomplete: missing role."
     );
   }
-  
+
   // Admin doesn't need housingCompanyId
   if (data.role !== "admin" && !data?.housingCompanyId) {
     throw new HttpsError(
@@ -68,7 +72,7 @@ const getUserProfile = async (uid: string): Promise<UserProfile> => {
       "User profile incomplete: missing housingCompanyId."
     );
   }
-  
+
   return {
     housingCompanyId: data.housingCompanyId || "",
     role: data.role,
@@ -192,7 +196,13 @@ export const updateFaultReportStatus = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin", "maintenance"]);
+    assertAllowedRole(role, [
+      "admin",
+      "maintenance",
+      "service_company",
+      "property_manager",
+      "housing_company",
+    ]);
 
     const {faultReportId, status, comment} = request.data || {};
     if (
@@ -208,6 +218,30 @@ export const updateFaultReportStatus = onCall(
       throw new HttpsError("not-found", "Fault report not found.");
     }
     const report = snap.data();
+    const knownStatuses = new Set([
+      "created",
+      "open",
+      "waiting",
+      "in_progress",
+      "completed",
+      "incomplete",
+      "not_possible",
+      "cancelled",
+      "resolved",
+      "closed",
+    ]);
+    const rawStatus = report?.status;
+    const currentStatus =
+      typeof rawStatus === "string" && knownStatuses.has(rawStatus) ?
+        rawStatus :
+        "open";
+    console.log("[STATUS_DEBUG]", {
+      uid,
+      role,
+      housingCompanyId,
+      currentStatus,
+      nextStatus: status,
+    });
     if (report?.housingCompanyId !== housingCompanyId) {
       throw new HttpsError(
         "permission-denied",
@@ -215,16 +249,24 @@ export const updateFaultReportStatus = onCall(
       );
     }
 
-    await docRef.update({
+    const updates: Record<string, unknown> = {
       status,
-      comment: typeof comment === "string" ? comment : undefined,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedBy: uid,
       resolvedAt:
         status === "resolved" || status === "closed" ?
           admin.firestore.FieldValue.serverTimestamp() :
           report?.resolvedAt ?? null,
-    });
+    };
+    if (typeof comment === "string") {
+      updates.comment = comment;
+    }
+
+    try {
+      await docRef.update(updates);
+    } catch (error: unknown) {
+      throw new HttpsError("internal", "Failed to update fault report status.");
+    }
 
     return {ok: true};
   }
@@ -423,8 +465,9 @@ export const deleteResidentAccount = onCall(
     // Delete user from Firebase Authentication
     try {
       await admin.auth().deleteUser(uid);
-    } catch (authError: any) {
-      if (authError.code !== "auth/user-not-found") {
+    } catch (authError: unknown) {
+      const errorCode = (authError as {code?: string}).code;
+      if (errorCode !== "auth/user-not-found") {
         throw authError;
       }
     }
@@ -451,7 +494,6 @@ export const createHousingCompany = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role} = await getUserProfile(uid);
-    
     // Only admins can create housing companies
     if (role !== "admin") {
       throw new HttpsError(
@@ -502,7 +544,7 @@ export const generateInviteCode = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role} = await getUserProfile(uid);
-    
+
     // Only admins can generate invite codes
     if (role !== "admin") {
       throw new HttpsError(
@@ -533,7 +575,7 @@ export const generateInviteCode = onCall(
 
     // Generate random 8-character code
     const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-    
+
     // Expires in 7 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -564,7 +606,7 @@ export const deleteHousingCompany = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role} = await getUserProfile(uid);
-    
+
     // Only admins can delete housing companies
     if (role !== "admin") {
       throw new HttpsError(
@@ -602,26 +644,27 @@ export const deleteHousingCompany = onCall(
     // For each resident invite that has been used, delete the resident's account
     const residentDeletePromises = residentInvitesSnap.docs.map(async (inviteDoc) => {
       const invite = inviteDoc.data();
-      
+
       if (invite.isUsed && invite.usedByUserId) {
         const userId = invite.usedByUserId;
-        
+
         try {
           // Delete user from Firebase Authentication
           await admin.auth().deleteUser(userId);
-        } catch (authError: any) {
+        } catch (authError: unknown) {
           // If user doesn't exist in Auth, continue
-          if (authError.code !== "auth/user-not-found") {
+          const errorCode = (authError as {code?: string}).code;
+          if (errorCode !== "auth/user-not-found") {
             console.error(`Failed to delete user ${userId}:`, authError);
           }
         }
 
         // Delete user profile document
         await db.collection("users").doc(userId).delete();
-        
+
         // Note: Fault reports and their images will be deleted in bulk below
       }
-      
+
       // Delete the resident invite document
       await inviteDoc.ref.delete();
     });
@@ -637,7 +680,7 @@ export const deleteHousingCompany = onCall(
     // Delete all images for each fault report
     const faultReportImageDeletePromises = allFaultReportsSnap.docs.map(async (faultDoc) => {
       const faultReportId = faultDoc.id;
-      
+
       try {
         // Delete all images in the faultReports/{faultReportId}/ folder
         const [files] = await bucket.getFiles({
@@ -648,12 +691,12 @@ export const deleteHousingCompany = onCall(
         const imageDeletePromises = files.map((file) => file.delete().catch((error) => {
           console.error(`Failed to delete image ${file.name}:`, error);
         }));
-        
+
         await Promise.all(imageDeletePromises);
       } catch (error) {
         console.error(`Failed to delete images for fault report ${faultReportId}:`, error);
       }
-      
+
       // Delete the fault report document
       await faultDoc.ref.delete();
     });
@@ -669,16 +712,17 @@ export const deleteHousingCompany = onCall(
     // For each management invite that has been used, delete the maintenance user's account
     const managementDeletePromises = managementInvitesSnap.docs.map(async (inviteDoc) => {
       const invite = inviteDoc.data();
-      
+
       if (invite.isUsed && invite.usedByUserId) {
         const userId = invite.usedByUserId;
-        
+
         try {
           // Delete user from Firebase Authentication
           await admin.auth().deleteUser(userId);
-        } catch (authError: any) {
+        } catch (authError: unknown) {
           // If user doesn't exist in Auth, continue
-          if (authError.code !== "auth/user-not-found") {
+          const errorCode = (authError as {code?: string}).code;
+          if (errorCode !== "auth/user-not-found") {
             console.error(`Failed to delete maintenance user ${userId}:`, authError);
           }
         }
@@ -686,7 +730,7 @@ export const deleteHousingCompany = onCall(
         // Delete user profile document
         await db.collection("users").doc(userId).delete();
       }
-      
+
       // Delete the management invite document
       await inviteDoc.ref.delete();
     });
@@ -702,16 +746,17 @@ export const deleteHousingCompany = onCall(
     // For each service company invite that has been used, delete the service company user's account
     const serviceCompanyDeletePromises = serviceCompanyInvitesSnap.docs.map(async (inviteDoc) => {
       const invite = inviteDoc.data();
-      
+
       if (invite.isUsed && invite.usedByUserId) {
         const userId = invite.usedByUserId;
-        
+
         try {
           // Delete user from Firebase Authentication
           await admin.auth().deleteUser(userId);
-        } catch (authError: any) {
+        } catch (authError: unknown) {
           // If user doesn't exist in Auth, continue
-          if (authError.code !== "auth/user-not-found") {
+          const errorCode = (authError as {code?: string}).code;
+          if (errorCode !== "auth/user-not-found") {
             console.error(`Failed to delete service company user ${userId}:`, authError);
           }
         }
@@ -719,7 +764,7 @@ export const deleteHousingCompany = onCall(
         // Delete user profile document
         await db.collection("users").doc(userId).delete();
       }
-      
+
       // Delete the service company invite document
       await inviteDoc.ref.delete();
     });
@@ -729,13 +774,14 @@ export const deleteHousingCompany = onCall(
     // If company is registered and has a user account, delete it
     if (company?.isRegistered && company?.userId) {
       const userId = company.userId;
-      
+
       try {
         // Delete user from Firebase Authentication
         await admin.auth().deleteUser(userId);
-      } catch (authError: any) {
+      } catch (authError: unknown) {
         // If user doesn't exist in Auth, continue (they might have been deleted manually)
-        if (authError.code !== "auth/user-not-found") {
+        const errorCode = (authError as {code?: string}).code;
+        if (errorCode !== "auth/user-not-found") {
           throw authError;
         }
       }
@@ -763,7 +809,7 @@ export const validateInviteCode = onCall(
   {region: "europe-west1"},
   async (request) => {
     const {inviteCode} = request.data || {};
-    
+
     if (typeof inviteCode !== "string" || inviteCode.length < 6) {
       throw new HttpsError("invalid-argument", "Invalid invite code format.");
     }
@@ -917,8 +963,9 @@ export const registerWithInviteCode = onCall(
         userId: userRecord.uid,
         housingCompanyId: companyDoc.id,
       };
-    } catch (error: any) {
-      if (error.code === "auth/email-already-exists") {
+    } catch (error: unknown) {
+      const errorInfo = error as {code?: string; message?: string};
+      if (errorInfo.code === "auth/email-already-exists") {
         throw new HttpsError(
           "already-exists",
           "This email is already in use."
@@ -926,7 +973,7 @@ export const registerWithInviteCode = onCall(
       }
       throw new HttpsError(
         "internal",
-        `Registration failed: ${error.message}`
+        `Registration failed: ${errorInfo.message ?? "Unknown error"}`
       );
     }
   }
@@ -1045,7 +1092,7 @@ export const generateResidentInviteCode = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role, housingCompanyId} = await getUserProfile(uid);
-    
+
     // Only housing_company can generate resident invite codes
     if (role !== "housing_company") {
       throw new HttpsError(
@@ -1069,7 +1116,7 @@ export const generateResidentInviteCode = onCall(
 
     // Generate random 8-character code
     const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-    
+
     // Expires in 7 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -1108,7 +1155,7 @@ export const validateResidentInviteCode = onCall(
   {region: "europe-west1"},
   async (request) => {
     const {inviteCode} = request.data || {};
-    
+
     if (typeof inviteCode !== "string" || inviteCode.length < 6) {
       throw new HttpsError("invalid-argument", "Invalid invite code format.");
     }
@@ -1139,10 +1186,8 @@ export const validateResidentInviteCode = onCall(
       .collection("housingCompanies")
       .doc(invite.housingCompanyId)
       .get();
-    
-    const companyName = companySnap.exists 
-      ? companySnap.data()?.name 
-      : "Unknown";
+
+    const companyName = companySnap.exists ? companySnap.data()?.name : "Unknown";
 
     return {
       inviteId: inviteDoc.id,
@@ -1165,7 +1210,7 @@ export const getResidentInviteCodes = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role, housingCompanyId} = await getUserProfile(uid);
-    
+
     if (role !== "housing_company") {
       throw new HttpsError(
         "permission-denied",
@@ -1196,7 +1241,7 @@ export const getResidentInviteCodes = onCall(
           }
         }
       }
-      
+
       return {
         id: doc.id,
         inviteCode: data.inviteCode,
@@ -1221,7 +1266,7 @@ export const getResidentInviteCodes = onCall(
  *
  * @param {string} inviteCode - 8-character invite code
  * @param {string} firstName - User first name
- * @param {string} lastName - User last name  
+ * @param {string} lastName - User last name
  * @param {string} email - User email
  * @param {string} password - User password for authentication
  * @param {string} phone - Optional phone number
@@ -1279,8 +1324,9 @@ export const joinWithResidentInviteCode = onCall(
         password,
         displayName: `${firstName} ${lastName}`,
       });
-    } catch (authError: any) {
-      if (authError.code === "auth/email-already-exists") {
+    } catch (authError: unknown) {
+      const errorCode = (authError as {code?: string}).code;
+      if (errorCode === "auth/email-already-exists") {
         throw new HttpsError("already-exists", "Email already in use.");
       }
       throw new HttpsError("internal", "Failed to create user account.");
@@ -1329,7 +1375,7 @@ export const deleteResidentInvite = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role, housingCompanyId} = await getUserProfile(uid);
-    
+
     if (role !== "housing_company") {
       throw new HttpsError(
         "permission-denied",
@@ -1360,26 +1406,27 @@ export const deleteResidentInvite = onCall(
     // If invite was used and has a registered user, delete the user
     if (invite?.isUsed && invite?.usedByUserId) {
       const userId = invite.usedByUserId;
-      
+
       try {
         // Delete user from Firebase Authentication
         await admin.auth().deleteUser(userId);
-      } catch (authError: any) {
+      } catch (authError: unknown) {
         // If user doesn't exist in Auth, continue
-        if (authError.code !== "auth/user-not-found") {
+        const errorCode = (authError as {code?: string}).code;
+        if (errorCode !== "auth/user-not-found") {
           throw authError;
         }
       }
 
       // Delete user profile document
       await db.collection("users").doc(userId).delete();
-      
+
       // Delete all fault reports created by this user
       const faultReportsSnap = await db
         .collection("faultReports")
         .where("createdBy", "==", userId)
         .get();
-      
+
       const faultReportDeletePromises = faultReportsSnap.docs.map((doc) =>
         doc.ref.delete()
       );
@@ -1408,7 +1455,7 @@ export const generateManagementInviteCode = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role, housingCompanyId} = await getUserProfile(uid);
-    
+
     // Only housing_company can generate management invite codes
     if (role !== "housing_company") {
       throw new HttpsError(
@@ -1442,7 +1489,7 @@ export const generateManagementInviteCode = onCall(
 
     // Generate random 8-character code
     const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-    
+
     // Expires in 7 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -1477,7 +1524,7 @@ export const validateManagementInviteCode = onCall(
   {region: "europe-west1"},
   async (request) => {
     const {inviteCode} = request.data || {};
-    
+
     if (typeof inviteCode !== "string" || inviteCode.length < 6) {
       throw new HttpsError("invalid-argument", "Invalid invite code format.");
     }
@@ -1508,10 +1555,8 @@ export const validateManagementInviteCode = onCall(
       .collection("housingCompanies")
       .doc(invite.housingCompanyId)
       .get();
-    
-    const companyName = companySnap.exists 
-      ? companySnap.data()?.name 
-      : "Unknown";
+
+    const companyName = companySnap.exists ? companySnap.data()?.name : "Unknown";
 
     return {
       inviteId: inviteDoc.id,
@@ -1528,7 +1573,7 @@ export const validateManagementInviteCode = onCall(
  *
  * @param {string} inviteCode - 8-character invite code
  * @param {string} firstName - User first name
- * @param {string} lastName - User last name  
+ * @param {string} lastName - User last name
  * @param {string} email - User email
  * @param {string} password - User password for authentication
  * @param {string} phone - Optional phone number
@@ -1644,7 +1689,7 @@ export const generateServiceCompanyInviteCode = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {role, housingCompanyId} = await getUserProfile(uid);
-    
+
     // Only housing_company can generate service company invite codes
     if (role !== "housing_company") {
       throw new HttpsError(
@@ -1678,7 +1723,7 @@ export const generateServiceCompanyInviteCode = onCall(
 
     // Generate random 8-character code
     const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-    
+
     // Expires in 7 days
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -1713,7 +1758,7 @@ export const validateServiceCompanyInviteCode = onCall(
   {region: "europe-west1"},
   async (request) => {
     const {inviteCode} = request.data || {};
-    
+
     if (typeof inviteCode !== "string" || inviteCode.length < 6) {
       throw new HttpsError("invalid-argument", "Invalid invite code format.");
     }
@@ -1744,10 +1789,8 @@ export const validateServiceCompanyInviteCode = onCall(
       .collection("housingCompanies")
       .doc(invite.housingCompanyId)
       .get();
-    
-    const companyName = companySnap.exists 
-      ? companySnap.data()?.name 
-      : "Unknown";
+
+    const companyName = companySnap.exists ? companySnap.data()?.name : "Unknown";
 
     return {
       inviteId: inviteDoc.id,
@@ -1764,7 +1807,7 @@ export const validateServiceCompanyInviteCode = onCall(
  *
  * @param {string} inviteCode - 8-character invite code
  * @param {string} firstName - User first name
- * @param {string} lastName - User last name  
+ * @param {string} lastName - User last name
  * @param {string} email - User email
  * @param {string} password - User password for authentication
  * @param {string} phone - Optional phone number
@@ -1864,3 +1907,10 @@ export const joinWithServiceCompanyInviteCode = onCall(
     return {ok: true, housingCompanyId: invite.housingCompanyId};
   }
 );
+
+// Verification checklist:
+// [ ] LF line endings
+// [ ] No ESLint errors
+// [ ] updateFaultReportStatus allows admin + maintenance
+// [ ] Status values align with frontend
+// [ ] No breaking API changes

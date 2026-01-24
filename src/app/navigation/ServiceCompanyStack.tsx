@@ -1,10 +1,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { ServiceCompanyTabs } from './ServiceCompanyTabs';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
+import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
 
 export type ServiceCompanyStackParamList = {
   Tabs: undefined;
+  FaultReportDetails: { faultReportId: string };
   Settings: undefined;
 };
 
@@ -14,6 +17,7 @@ const Stack = createNativeStackNavigator<ServiceCompanyStackParamList>();
  * Navigation stack for service company users
  */
 export const ServiceCompanyStack: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <Stack.Navigator
       screenOptions={{
@@ -23,6 +27,14 @@ export const ServiceCompanyStack: React.FC = () => {
       <Stack.Screen
         name="Tabs"
         component={ServiceCompanyTabs}
+      />
+      <Stack.Screen
+        name="FaultReportDetails"
+        component={FaultReportDetailsScreen}
+        options={{
+          headerShown: true,
+          title: t('faults.detailTitle'),
+        }}
       />
       <Stack.Screen
         name="Settings"

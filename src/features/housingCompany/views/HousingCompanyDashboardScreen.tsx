@@ -9,7 +9,7 @@ import { TFButton } from '../../../shared/components/TFButton';
 import { useHousingCompanyVM } from '../viewmodels/useHousingCompanyVM';
 import { HousingCompanyStackParamList } from '../../../app/navigation/HousingCompanyStack';
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
-import { FaultReportStatus } from '@/data/models/enums';
+import { isClosedStatus, isOpenStatus } from '@/shared/utils/faultReportStatusActions';
 
 type NavigationProp = NativeStackNavigationProp<HousingCompanyStackParamList>;
 
@@ -50,10 +50,8 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
     }, [loadReports])
   );
 
-  const openCount = reports.filter(report => report.status === FaultReportStatus.OPEN).length;
-  const completedCount = reports.filter(
-    report => report.status === FaultReportStatus.CLOSED || report.status === FaultReportStatus.CANCELLED
-  ).length;
+  const openCount = reports.filter(report => isOpenStatus(report.status)).length;
+  const completedCount = reports.filter(report => isClosedStatus(report.status)).length;
 
   const handleRemoveManagement = () => {
     Alert.alert(

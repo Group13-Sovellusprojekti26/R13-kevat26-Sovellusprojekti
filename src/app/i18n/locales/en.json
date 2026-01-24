@@ -94,9 +94,57 @@
     "statusResolved": "Resolved",
     "statusClosed": "Closed",
     "statusCancelled": "Cancelled",
-    "filterOpen": "Open",
-    "filterClosed": "Closed / Cancelled",
-    "filterAll": "All",
+    "status": {
+      "created": "Created",
+      "open": "Open",
+      "inProgress": "In progress",
+      "waiting": "Waiting",
+      "completed": "Completed",
+      "incomplete": "Incomplete",
+      "notPossible": "Not possible",
+      "cancelled": "Cancelled",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "statusButtons": {
+      "startWork": "Start work",
+      "markResolved": "Mark as resolved",
+      "markClosed": "Close report",
+      "cancelWork": "Cancel report"
+    },
+    "statusActions": {
+      "open": "Open report",
+      "startWork": "Start work",
+      "moveToQueue": "Move to queue",
+      "resumeWork": "Resume work",
+      "markCompleted": "Mark completed",
+      "markIncomplete": "Mark incomplete",
+      "markNotPossible": "Mark not possible",
+      "cancel": "Cancel report"
+    },
+    "statusErrorPermission": "You do not have permission to change the fault report status.",
+    "statusErrorTransition": "The status cannot be changed at this time.",
+    "statusError": {
+      "permission": "You do not have permission to change the fault report status.",
+      "transition": "The status cannot be changed at this time.",
+      "generic": "Something went wrong while changing the status."
+    },
+    "statusConfirm": {
+      "title": "Confirm status change",
+      "cancelBody": "Are you sure you want to cancel this fault report?",
+      "notPossibleBody": "Are you sure you want to mark this report as not possible?"
+    },
+    "filterButton": "Filter: {{filter}}",
+    "filterTitle": "Filter",
+    "filters": {
+      "all": "All",
+      "open": "Open",
+      "inProgress": "In progress",
+      "waiting": "Waiting",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
     "descriptionRequired": "Description is required",
     "descriptionMinLength": "Description must be at least {{min}} characters",
     "descriptionMaxLength": "Description must be at most {{max}} characters",
@@ -127,6 +175,7 @@
     "delete": "Delete",
     "remove": "Remove",
     "back": "Back",
+    "confirm": "Confirm",
     "logout": "Log out",
     "copied": "Copied to clipboard",
     "success": "Success",

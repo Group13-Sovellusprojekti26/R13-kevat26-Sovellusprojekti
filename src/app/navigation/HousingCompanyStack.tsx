@@ -8,9 +8,11 @@ import { CreateServiceCompanyInviteScreen } from '@/features/housingCompany/view
 import { ResidentListScreen } from '@/features/housingCompany/views/ResidentListScreen';
 import { BuildingResidentsScreen } from '@/features/housingCompany/views/BuildingResidentsScreen';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
+import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
 
 export type HousingCompanyStackParamList = {
   Tabs: undefined;
+  FaultReportDetails: { faultReportId: string };
   CreateResidentInvite: undefined;
   CreateManagementInvite: undefined;
   CreateServiceCompanyInvite: undefined;
@@ -36,6 +38,14 @@ export const HousingCompanyStack: React.FC = () => {
       <Stack.Screen 
         name="Tabs" 
         component={HousingCompanyTabs}
+      />
+      <Stack.Screen
+        name="FaultReportDetails"
+        component={FaultReportDetailsScreen}
+        options={{
+          headerShown: true,
+          title: t('faults.detailTitle'),
+        }}
       />
       <Stack.Screen 
         name="CreateResidentInvite" 

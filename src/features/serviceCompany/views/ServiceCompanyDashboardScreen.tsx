@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../../shared/components/Screen';
 import { useServiceCompanyVM } from '../viewmodels/useServiceCompanyVM';
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
-import { FaultReportStatus } from '@/data/models/enums';
+import { isClosedStatus, isOpenStatus } from '@/shared/utils/faultReportStatusActions';
 
 /**
  * Main dashboard screen for service company users
@@ -35,10 +35,8 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
     ? profile.companyName
     : [profile.firstName, profile.lastName].filter(Boolean).join(' ');
 
-  const openCount = reports.filter(report => report.status === FaultReportStatus.OPEN).length;
-  const completedCount = reports.filter(
-    report => report.status === FaultReportStatus.CLOSED || report.status === FaultReportStatus.CANCELLED
-  ).length;
+  const openCount = reports.filter(report => isOpenStatus(report.status)).length;
+  const completedCount = reports.filter(report => isClosedStatus(report.status)).length;
 
   return (
     <Screen scrollable safeAreaEdges={['right', 'bottom', 'left']}>

@@ -96,9 +96,57 @@
     "statusResolved": "Ratkaistu",
     "statusClosed": "Suljettu",
     "statusCancelled": "Peruttu",
-    "filterOpen": "Avoin",
-    "filterClosed": "Suljettu / Peruttu",
-    "filterAll": "Kaikki",
+    "status": {
+      "created": "Luotu",
+      "open": "Avoin",
+      "inProgress": "Työn alla",
+      "waiting": "Jonossa",
+      "completed": "Valmis",
+      "incomplete": "Kesken",
+      "notPossible": "Ei mahdollista",
+      "cancelled": "Peruttu",
+      "resolved": "Ratkaistu",
+      "closed": "Suljettu"
+    },
+    "statusButtons": {
+      "startWork": "Aloita työ",
+      "markResolved": "Merkitse ratkaistuksi",
+      "markClosed": "Sulje ilmoitus",
+      "cancelWork": "Peruuta ilmoitus"
+    },
+    "statusActions": {
+      "open": "Avaa ilmoitus",
+      "startWork": "Aloita työ",
+      "moveToQueue": "Siirrä jonoon",
+      "resumeWork": "Jatka työtä",
+      "markCompleted": "Merkitse valmiiksi",
+      "markIncomplete": "Merkitse keskeneräiseksi",
+      "markNotPossible": "Merkitse mahdottomaksi",
+      "cancel": "Peruuta ilmoitus"
+    },
+    "statusErrorPermission": "Sinulla ei ole oikeutta muuttaa vikailmoituksen tilaa.",
+    "statusErrorTransition": "Tilaa ei voi vaihtaa tässä vaiheessa.",
+    "statusError": {
+      "permission": "Sinulla ei ole oikeutta muuttaa vikailmoituksen tilaa.",
+      "transition": "Tilaa ei voi vaihtaa tässä vaiheessa.",
+      "generic": "Tilaa ei voitu päivittää. Yritä uudelleen."
+    },
+    "statusConfirm": {
+      "title": "Vahvista tilan muutos",
+      "cancelBody": "Haluatko varmasti peruuttaa tämän vikailmoituksen?",
+      "notPossibleBody": "Haluatko varmasti merkitä tämän ilmoituksen mahdottomaksi?"
+    },
+    "filterButton": "Suodatin: {{filter}}",
+    "filterTitle": "Suodatin",
+    "filters": {
+      "all": "Kaikki",
+      "open": "Avoin",
+      "inProgress": "Työn alla",
+      "waiting": "Jonossa",
+      "done": "Valmis",
+      "failed": "Epäonnistunut",
+      "cancelled": "Peruttu"
+    },
     "descriptionRequired": "Kuvaus on pakollinen",
     "descriptionMinLength": "Kuvauksen tulee olla vähintään {{min}} merkkiä",
     "descriptionMaxLength": "Kuvaus saa olla enintään {{max}} merkkiä",
@@ -129,6 +177,7 @@
     "delete": "Poista",
     "remove": "Poista",
     "back": "Takaisin",
+    "confirm": "Vahvista",
     "logout": "Kirjaudu ulos",
     "copied": "Kopioitu leikepöydälle",
     "success": "Onnistui",
