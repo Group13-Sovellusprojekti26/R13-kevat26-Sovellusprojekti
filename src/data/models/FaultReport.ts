@@ -18,6 +18,8 @@ export interface FaultReport {
   updatedAt: Date;
   resolvedAt?: Date;
   assignedTo?: string;
+  allowMasterKeyAccess?: boolean;
+  hasPets?: boolean;
 }
 
 export interface CreateFaultReportInput {
@@ -27,5 +29,7 @@ export interface CreateFaultReportInput {
   urgency: UrgencyLevel;
   apartmentNumber?: string;
   imageUris?: string[];
+  allowMasterKeyAccess?: boolean;
+  hasPets?: boolean;
 }
 

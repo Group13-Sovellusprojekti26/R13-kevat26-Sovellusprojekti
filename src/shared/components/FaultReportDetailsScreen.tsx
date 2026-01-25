@@ -5,10 +5,10 @@ import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/shared/components/Screen';
 import { StatusActionBar } from '@/shared/components/StatusActionBar';
-import { UrgencyLevel, UserRole } from '@/data/models/enums';
+import { FaultReportStatus, UrgencyLevel, UserRole } from '@/data/models/enums';
 import { useFaultReportDetailsVM } from '@/shared/viewmodels/useFaultReportDetailsVM';
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
-import { getStatusLabelKey } from '@/shared/utils/faultReportStatusActions';
+import { getStatusLabelKey, StatusActionDefinition } from '@/shared/utils/faultReportStatusActions';
 import { useFaultReportListVM } from '@/features/resident/faultReports/viewmodels/useFaultReportListVM';
 import ImageViewer from 'react-native-image-zoom-viewer';
 
@@ -49,6 +49,46 @@ export const FaultReportDetailsScreen: React.FC = () => {
   } = useFaultReportDetailsVM();
   const refreshReports = useCompanyFaultReportsVM(state => state.refresh);
   const refreshResidentReports = useFaultReportListVM(state => state.refresh);
+  const canManageWorkflow = userRole === UserRole.SERVICE_COMPANY;
+  const shouldRenderActionBar = canManageWorkflow;
+  const inProgressExtraActions = useMemo<StatusActionDefinition[]>(() => {
+    if (
+      !canManageWorkflow ||
+      (report?.status !== FaultReportStatus.IN_PROGRESS &&
+        report?.status !== FaultReportStatus.INCOMPLETE)
+    ) {
+      return [];
+    }
+
+    const extra: StatusActionDefinition[] = [
+      {
+        status: FaultReportStatus.COMPLETED,
+        labelKey: 'faults.statusActions.markCompleted',
+        mode: 'contained',
+      },
+      {
+        status: FaultReportStatus.WAITING,
+        labelKey: 'faults.statusActions.moveToQueue',
+        mode: 'outlined',
+      },
+      {
+        status: FaultReportStatus.CANCELLED,
+        labelKey: 'faults.statusActions.cancel',
+        mode: 'outlined',
+        destructive: true,
+        confirmTitleKey: 'faults.statusConfirm.title',
+        confirmBodyKey: 'faults.statusConfirm.cancelBody',
+      },
+    ];
+
+    const existingStatuses = new Set(statusActions.map(action => action.status));
+    return extra.filter(action => !existingStatuses.has(action.status));
+  }, [canManageWorkflow, report?.status, statusActions]);
+
+  const resolvedStatusActions = useMemo(
+    () => [...statusActions, ...inProgressExtraActions],
+    [inProgressExtraActions, statusActions]
+  );
 
   const faultReportId = route.params?.faultReportId;
   const viewerImages = useMemo(
@@ -119,6 +159,26 @@ export const FaultReportDetailsScreen: React.FC = () => {
             </View>
           </View>
 
+          {(report.allowMasterKeyAccess !== undefined || report.hasPets !== undefined) && (
+            <View style={styles.additionalInfoSection}>
+              <Text style={styles.sectionLabel}>{t('faults.additionalInfoTitle')}</Text>
+              {report.allowMasterKeyAccess !== undefined && (
+                <Text style={styles.sectionText}>
+                  {`🔑 ${t('faults.allowMasterKeyAccess')}: ${t(
+                    report.allowMasterKeyAccess ? 'faults.booleanYes' : 'faults.booleanNo'
+                  )}`}
+                </Text>
+              )}
+              {report.hasPets !== undefined && (
+                <Text style={styles.sectionText}>
+                  {`🐾 ${t('faults.hasPets')}: ${t(
+                    report.hasPets ? 'faults.booleanYes' : 'faults.booleanNo'
+                  )}`}
+                </Text>
+              )}
+            </View>
+          )}
+
           {(report.imageUrls ?? []).length > 0 && (
             <View style={styles.imageSection}>
               <Text style={styles.sectionLabel}>{t('faults.images')}</Text>
@@ -145,19 +205,17 @@ export const FaultReportDetailsScreen: React.FC = () => {
           )}
         </ScrollView>
 
-        <View style={styles.actionBar}>
-          <StatusActionBar
-            actions={statusActions}
-            onAction={async status => updateStatus(report.id, status)}
-            onStatusChanged={() => {
-              if (userRole === UserRole.RESIDENT) {
-                refreshResidentReports();
-                return;
-              }
-              refreshReports();
-            }}
-          />
-        </View>
+        {shouldRenderActionBar && (
+          <View style={styles.actionBar}>
+            <StatusActionBar
+              actions={resolvedStatusActions}
+              onAction={async status => updateStatus(report.id, status)}
+              onStatusChanged={() => {
+                refreshReports();
+              }}
+            />
+          </View>
+        )}
       </View>
       <Modal
         transparent
@@ -172,6 +230,7 @@ export const FaultReportDetailsScreen: React.FC = () => {
             enableSwipeDown
             onSwipeDown={() => setViewerVisible(false)}
             saveToLocalByLongPress={false}
+            renderIndicator={undefined}
           />
           <Pressable style={styles.viewerClose} onPress={() => setViewerVisible(false)}>
             <Text style={styles.viewerCloseText}>✕</Text>
@@ -225,6 +284,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageSection: {
+    marginBottom: 12,
+  },
+  additionalInfoSection: {
     marginBottom: 12,
   },
   imagePreview: {

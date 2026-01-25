@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable, Alert } from 'react-native';
-import { Text, SegmentedButtons, useTheme } from 'react-native-paper';
+import { Checkbox, Text, SegmentedButtons, useTheme } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,12 +8,13 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import { Screen } from '../../../../shared/components/Screen';
 import { TFButton } from '../../../../shared/components/TFButton';
 import { TFTextField } from '../../../../shared/components/TFTextField';
 import { useCreateFaultReportVM } from '../viewmodels/useCreateFaultReportVM';
-import { FaultReportStatus, UrgencyLevel } from '../../../../data/models/enums';
+import { FaultReportStatus, UrgencyLevel, UserRole } from '../../../../data/models/enums';
 import { haptic } from '../../../../shared/utils/haptics';
 import type { ResidentTabsParamList } from '../../../../app/navigation/ResidentTabs';
 
@@ -30,6 +31,8 @@ const createFaultReportSchema = z.object({
     .max(MAX_DESCRIPTION_LENGTH, 'faults.descriptionMaxLength'),
   location: z.string().min(1, 'faults.locationRequired'),
   urgency: z.nativeEnum(UrgencyLevel),
+  allowMasterKeyAccess: z.boolean().optional(),
+  hasPets: z.boolean().optional(),
 });
 
 type CreateFaultReportFormData = z.infer<typeof createFaultReportSchema>;
@@ -39,17 +42,31 @@ type CreateFaultReportFormData = z.infer<typeof createFaultReportSchema>;
 export const CreateFaultReportScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<BottomTabNavigationProp<ResidentTabsParamList, 'CreateFaultReport'>>();
   const route = useRoute<RouteProp<ResidentTabsParamList, 'CreateFaultReport'>>();
-  const { loading, error, success, submitReport, clearError, reset, loadReport, updateReport, closeReport, report } =
-    useCreateFaultReportVM();
+  const {
+    loading,
+    error,
+    success,
+    submitReport,
+    clearError,
+    reset,
+    loadReport,
+    updateReport,
+    closeReport,
+    report,
+    userRole,
+    loadUserRole,
+  } = useCreateFaultReportVM();
 
   const faultReportId = route.params?.faultReportId;
   const isEditMode = useMemo(() => Boolean(faultReportId), [faultReportId]);
+  const isResident = userRole === UserRole.RESIDENT;
   const isEditable =
-    !isEditMode ||
-    report?.status === FaultReportStatus.OPEN ||
-    report?.status === FaultReportStatus.CREATED;
+    isResident &&
+    (!isEditMode ||
+      report?.status === FaultReportStatus.OPEN ||
+      report?.status === FaultReportStatus.CREATED);
 
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
@@ -90,6 +107,8 @@ export const CreateFaultReportScreen: React.FC = () => {
       description: '',
       location: '',
       urgency: UrgencyLevel.MEDIUM,
+      allowMasterKeyAccess: false,
+      hasPets: false,
     },
   });
 
@@ -98,6 +117,10 @@ export const CreateFaultReportScreen: React.FC = () => {
       loadReport(faultReportId);
     }
   }, [faultReportId, loadReport]);
+
+  useEffect(() => {
+    loadUserRole();
+  }, [loadUserRole]);
 
   useFocusEffect(
     useCallback(() => {
@@ -110,6 +133,8 @@ export const CreateFaultReportScreen: React.FC = () => {
         description: '',
         location: '',
         urgency: UrgencyLevel.MEDIUM,
+        allowMasterKeyAccess: false,
+        hasPets: false,
       });
       setExistingImageUrls([]);
       setImageUris([]);
@@ -118,12 +143,34 @@ export const CreateFaultReportScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', () => {
+      navigation.setParams({});
+      resetForm({
+        title: '',
+        description: '',
+        location: '',
+        urgency: UrgencyLevel.MEDIUM,
+        allowMasterKeyAccess: false,
+        hasPets: false,
+      });
+      setExistingImageUrls([]);
+      setImageUris([]);
+      clearError();
+      reset();
+    });
+
+    return unsubscribe;
+  }, [clearError, navigation, reset, resetForm]);
+
+  useEffect(() => {
     if (report && isEditMode) {
       resetForm({
         title: report.title,
         description: report.description,
         location: report.location,
         urgency: report.urgency,
+        allowMasterKeyAccess: report.allowMasterKeyAccess ?? false,
+        hasPets: report.hasPets ?? false,
       });
       setExistingImageUrls(dedupeUrls(report.imageUrls ?? []));
       setImageUris([]);
@@ -140,6 +187,9 @@ export const CreateFaultReportScreen: React.FC = () => {
   useEffect(() => {
     if (success && !isEditMode) {
       const handleAfterSave = () => {
+        if (route.params?.faultReportId) {
+          navigation.setParams({ faultReportId: undefined });
+        }
         if (navigation.canGoBack()) {
           navigation.goBack();
           return;
@@ -156,7 +206,7 @@ export const CreateFaultReportScreen: React.FC = () => {
       resetForm();
       reset();
     }
-  }, [isEditMode, navigation, reset, resetForm, success, t]);
+  }, [isEditMode, navigation, reset, resetForm, route.params, success, t]);
 
   const descriptionValue = watch('description');
   const descriptionCount = descriptionValue?.length ?? 0;
@@ -227,6 +277,8 @@ export const CreateFaultReportScreen: React.FC = () => {
           description: descriptionToSend,
           imageUris: imageUrisToSend,
           existingImageUrls: existingUrlsToSend,
+          allowMasterKeyAccess: data.allowMasterKeyAccess,
+          hasPets: data.hasPets,
         });
         if (ok) {
           Alert.alert(t('faults.updateSuccess'), t('faultReport.updateSuccess'), [
@@ -365,17 +417,60 @@ export const CreateFaultReportScreen: React.FC = () => {
               <View style={styles.urgencyContainer}>
                 <Text style={styles.label}>{t('faults.urgency')}</Text>
                 <SegmentedButtons
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={loading || isEditMode || !isEditable}
+                  value={String(field.value)}
+                  onValueChange={value => field.onChange(value as UrgencyLevel)}
                   buttons={[
-                    { value: UrgencyLevel.LOW, label: t('faults.urgencyLow') },
-                    { value: UrgencyLevel.MEDIUM, label: t('faults.urgencyMedium') },
-                    { value: UrgencyLevel.HIGH, label: t('faults.urgencyHigh') },
-                    { value: UrgencyLevel.URGENT, label: t('faults.urgencyUrgent') },
+                    {
+                      value: String(UrgencyLevel.LOW),
+                      label: t('faults.urgencyLow'),
+                      disabled: loading || isEditMode || !isEditable,
+                    },
+                    {
+                      value: String(UrgencyLevel.MEDIUM),
+                      label: t('faults.urgencyMedium'),
+                      disabled: loading || isEditMode || !isEditable,
+                    },
+                    {
+                      value: String(UrgencyLevel.HIGH),
+                      label: t('faults.urgencyHigh'),
+                      disabled: loading || isEditMode || !isEditable,
+                    },
+                    {
+                      value: String(UrgencyLevel.URGENT),
+                      label: t('faults.urgencyUrgent'),
+                      disabled: loading || isEditMode || !isEditable,
+                    },
                   ]}
                 />
               </View>
+            )}
+          />
+        </View>
+
+        <View style={styles.additionalInfoSection}>
+          <Text style={styles.label}>{t('faults.additionalInfoTitle')}</Text>
+          <Controller
+            control={control}
+            name="allowMasterKeyAccess"
+            render={({ field }) => (
+              <Checkbox.Item
+                label={t('faults.allowMasterKeyAccess')}
+                status={field.value ? 'checked' : 'unchecked'}
+                onPress={() => field.onChange(!field.value)}
+                disabled={loading || !isEditable}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="hasPets"
+            render={({ field }) => (
+              <Checkbox.Item
+                label={t('faults.hasPets')}
+                status={field.value ? 'checked' : 'unchecked'}
+                onPress={() => field.onChange(!field.value)}
+                disabled={loading || !isEditable}
+              />
             )}
           />
         </View>
@@ -499,6 +594,10 @@ const styles = StyleSheet.create({
   },
   imageSection: {
     marginTop: 8,
+    marginBottom: 8,
+  },
+  additionalInfoSection: {
+    marginTop: 4,
     marginBottom: 8,
   },
   imageContainer: {
