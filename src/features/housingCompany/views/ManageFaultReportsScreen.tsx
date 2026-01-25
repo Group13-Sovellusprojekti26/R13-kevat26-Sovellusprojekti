@@ -1,13 +1,18 @@
-import React, { useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, ScrollView, Image } from 'react-native';
-import { Text, Card, Chip, useTheme } from 'react-native-paper';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl, Modal } from 'react-native';
+import { Text, RadioButton, Surface, useTheme } from 'react-native-paper';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/shared/components/Screen';
 import { SkeletonCard } from '@/shared/components/SkeletonCard';
-import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
+import {
+  filterReportsByStatus,
+  FaultReportFilter,
+  useCompanyFaultReportsVM,
+} from '@/shared/viewmodels/useCompanyFaultReportsVM';
+import { TFButton } from '@/shared/components/TFButton';
 import { FaultReport } from '@/data/models/FaultReport';
-import { FaultReportStatus, UrgencyLevel } from '@/data/models/enums';
+import { FaultReportCard } from '@/shared/components/FaultReportCard';
 
 /**
  * Manage Fault Reports Screen for housing company
@@ -17,12 +22,15 @@ export const ManageFaultReportsScreen: React.FC = () => {
   console.log('ManageFaultReportsScreen mounted');
   const { t } = useTranslation();
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const reports = useCompanyFaultReportsVM(state => state.reports);
   const loading = useCompanyFaultReportsVM(state => state.loading);
   const error = useCompanyFaultReportsVM(state => state.error);
   const refreshing = useCompanyFaultReportsVM(state => state.refreshing);
   const loadReports = useCompanyFaultReportsVM(state => state.loadReports);
   const refresh = useCompanyFaultReportsVM(state => state.refresh);
+  const [filter, setFilter] = useState<FaultReportFilter>('all');
+  const [filterVisible, setFilterVisible] = useState(false);
 
   console.log('ManageFaultReportsScreen', {
     renderedCount: reports.length,
@@ -36,75 +44,32 @@ export const ManageFaultReportsScreen: React.FC = () => {
     }, [loadReports])
   );
 
-  const getStatusLabel = (status: FaultReportStatus): string => {
-    switch (status) {
-      case FaultReportStatus.OPEN:
-        return t('faults.statusOpen');
-      case FaultReportStatus.IN_PROGRESS:
-        return t('faults.statusInProgress');
-      case FaultReportStatus.RESOLVED:
-        return t('faults.statusResolved');
-      case FaultReportStatus.CLOSED:
-        return t('faults.statusClosed');
-      case FaultReportStatus.CANCELLED:
-        return t('faults.statusCancelled');
+  const filteredReports = useMemo(() => filterReportsByStatus(reports, filter), [filter, reports]);
+  const filterLabel = useMemo(() => {
+    switch (filter) {
+      case 'open':
+        return t('faults.filters.open');
+      case 'in_progress':
+        return t('faults.filters.inProgress');
+      case 'waiting':
+        return t('faults.filters.waiting');
+      case 'done':
+        return t('faults.filters.done');
+      case 'failed':
+        return t('faults.filters.failed');
+      case 'cancelled':
+        return t('faults.filters.cancelled');
+      case 'all':
       default:
-        return status;
+        return t('faults.filters.all');
     }
-  };
-
-  const getUrgencyLabel = (urgency: UrgencyLevel): string => {
-    switch (urgency) {
-      case UrgencyLevel.LOW:
-        return t('faults.urgencyLow');
-      case UrgencyLevel.MEDIUM:
-        return t('faults.urgencyMedium');
-      case UrgencyLevel.HIGH:
-        return t('faults.urgencyHigh');
-      case UrgencyLevel.URGENT:
-        return t('faults.urgencyUrgent');
-      default:
-        return urgency;
-    }
-  };
+  }, [filter, t]);
 
   const renderItem = ({ item }: { item: FaultReport }) => (
-    <Card style={styles.card}>
-      <Card.Content>
-        <View style={styles.header}>
-          <Text variant="titleMedium" style={styles.title}>{item.title}</Text>
-          <Chip mode="flat" compact>
-            {getStatusLabel(item.status)}
-          </Chip>
-        </View>
-        <Text style={styles.description}>{item.description}</Text>
-        {(item.imageUrls ?? []).length > 0 && (
-          <ScrollView horizontal style={styles.imageRow} showsHorizontalScrollIndicator={false}>
-            {(item.imageUrls ?? []).map((uri, index) => (
-              <Image
-                key={`${uri}-${index}`}
-                source={{ uri }}
-                style={styles.imagePreview}
-              />
-            ))}
-          </ScrollView>
-        )}
-
-        <View style={styles.footer}>
-          <Text style={[styles.location, { color: theme.colors.onSurfaceVariant }]}>{item.location}</Text>
-          <Chip
-            mode="outlined"
-            compact
-            textStyle={styles.urgencyText}
-          >
-            {getUrgencyLabel(item.urgency)}
-          </Chip>
-        </View>
-        <Text style={[styles.date, { color: theme.colors.onSurfaceVariant }]}>
-          {item.createdAt.toLocaleDateString()}
-        </Text>
-      </Card.Content>
-    </Card>
+    <FaultReportCard
+      report={item}
+      onPress={() => navigation.navigate('FaultReportDetails', { faultReportId: item.id })}
+    />
   );
 
   if (error) {
@@ -132,10 +97,21 @@ export const ManageFaultReportsScreen: React.FC = () => {
   return (
     <Screen safeAreaEdges={['left', 'right', 'bottom']}>
       <FlatList
-        data={reports}
+        data={filteredReports}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.filterContainer}>
+            <TFButton
+              title={t('faults.filterButton', { filter: filterLabel })}
+              mode="outlined"
+              icon="filter-variant"
+              onPress={() => setFilterVisible(true)}
+              fullWidth
+            />
+          </View>
+        }
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} />
         }
@@ -146,6 +122,43 @@ export const ManageFaultReportsScreen: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       />
+      <Modal
+        transparent
+        visible={filterVisible}
+        animationType="fade"
+        onRequestClose={() => setFilterVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
+            elevation={4}
+          >
+            <Text variant="titleMedium" style={styles.modalTitle}>
+              {t('faults.filterTitle')}
+            </Text>
+            <RadioButton.Group
+              onValueChange={(value) => {
+                setFilter(value as FaultReportFilter);
+                setFilterVisible(false);
+              }}
+              value={filter}
+            >
+              <RadioButton.Item label={t('faults.filters.all')} value="all" />
+              <RadioButton.Item label={t('faults.filters.open')} value="open" />
+              <RadioButton.Item label={t('faults.filters.inProgress')} value="in_progress" />
+              <RadioButton.Item label={t('faults.filters.waiting')} value="waiting" />
+              <RadioButton.Item label={t('faults.filters.done')} value="done" />
+              <RadioButton.Item label={t('faults.filters.failed')} value="failed" />
+              <RadioButton.Item label={t('faults.filters.cancelled')} value="cancelled" />
+            </RadioButton.Group>
+            <TFButton
+              title={t('common.cancel')}
+              mode="text"
+              onPress={() => setFilterVisible(false)}
+              fullWidth
+            />
+          </Surface>
+        </View>
+      </Modal>
     </Screen>
   );
 };
@@ -155,49 +168,23 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 96,
   },
-  card: {
+  filterContainer: {
     marginBottom: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalContent: {
     borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  modalTitle: {
     marginBottom: 8,
-  },
-  title: {
-    fontSize: 16,
-    flex: 1,
-    fontWeight: '600',
-  },
-  description: {
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  imageRow: {
-    marginBottom: 8,
-  },
-  imagePreview: {
-    width: 60,
-    height: 60,
-    marginRight: 8,
-    borderRadius: 8,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  location: {
-    fontSize: 14,
-    flex: 1,
-  },
-  urgencyText: {
-    fontSize: 12,
-  },
-  date: {
-    fontSize: 12,
+    textAlign: 'center',
   },
   centerContainer: {
     flex: 1,

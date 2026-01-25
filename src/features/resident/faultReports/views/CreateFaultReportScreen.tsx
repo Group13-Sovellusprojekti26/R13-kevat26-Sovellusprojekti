@@ -46,7 +46,10 @@ export const CreateFaultReportScreen: React.FC = () => {
 
   const faultReportId = route.params?.faultReportId;
   const isEditMode = useMemo(() => Boolean(faultReportId), [faultReportId]);
-  const isEditable = !isEditMode || report?.status === FaultReportStatus.OPEN;
+  const isEditable =
+    !isEditMode ||
+    report?.status === FaultReportStatus.OPEN ||
+    report?.status === FaultReportStatus.CREATED;
 
   const [imageUris, setImageUris] = useState<string[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);

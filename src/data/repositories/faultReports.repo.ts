@@ -278,10 +278,7 @@ export async function closeFaultReport(id: string): Promise<void> {
     throw new AppError('faults.unauthorized', 'fault-report/unauthorized');
   }
 
-  await updateDoc(reportRef, {
-    status: FaultReportStatus.CANCELLED,
-    updatedAt: serverTimestamp(),
-  });
+  await updateFaultReportStatus(id, FaultReportStatus.CANCELLED);
 }
 
 export async function deleteFaultReport(id: string): Promise<void> {

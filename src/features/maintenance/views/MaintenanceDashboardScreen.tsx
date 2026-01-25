@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Screen } from '../../../shared/components/Screen';
 import { useMaintenanceVM } from '../viewmodels/useMaintenanceVM';
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
-import { FaultReportStatus } from '@/data/models/enums';
+import { isClosedStatus, isOpenStatus } from '@/shared/utils/faultReportStatusActions';
 
 /**
  * Dashboard screen for maintenance/property manager users
@@ -37,10 +37,8 @@ export const MaintenanceDashboardScreen: React.FC = () => {
     ? profile.companyName
     : [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
 
-  const openCount = reports.filter(report => report.status === FaultReportStatus.OPEN).length;
-  const completedCount = reports.filter(
-    report => report.status === FaultReportStatus.CLOSED || report.status === FaultReportStatus.CANCELLED
-  ).length;
+  const openCount = reports.filter(report => isOpenStatus(report.status)).length;
+  const completedCount = reports.filter(report => isClosedStatus(report.status)).length;
 
   return (
     <Screen scrollable safeAreaEdges={['right', 'bottom', 'left']}>
