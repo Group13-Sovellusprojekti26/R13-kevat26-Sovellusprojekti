@@ -39,6 +39,8 @@ interface FirestoreFaultReportData {
   updatedAt?: Timestamp;
   resolvedAt?: Timestamp;
   assignedTo?: string;
+  allowMasterKeyAccess?: boolean;
+  hasPets?: boolean;
 }
 
 const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport => {
@@ -81,6 +83,8 @@ const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport
     updatedAt: updatedAt ?? createdAt,
     resolvedAt,
     assignedTo: data.assignedTo,
+    allowMasterKeyAccess: data.allowMasterKeyAccess,
+    hasPets: data.hasPets,
   };
 };
 
@@ -194,6 +198,8 @@ export async function createFaultReport(input: CreateFaultReportInput): Promise<
     imageUrls: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
+    allowMasterKeyAccess: input.allowMasterKeyAccess ?? false,
+    hasPets: input.hasPets ?? false,
   });
 
   if (input.imageUris?.length) {
@@ -217,6 +223,8 @@ export async function updateFaultReportDetails(
     description?: string;
     imageUris?: string[];
     existingImageUrls?: string[];
+    allowMasterKeyAccess?: boolean;
+    hasPets?: boolean;
   }
 ): Promise<string[]> {
   const updates: Record<string, unknown> = {
@@ -225,6 +233,14 @@ export async function updateFaultReportDetails(
 
   if (typeof params.description === 'string') {
     updates.description = params.description;
+  }
+
+  if (typeof params.allowMasterKeyAccess === 'boolean') {
+    updates.allowMasterKeyAccess = params.allowMasterKeyAccess;
+  }
+
+  if (typeof params.hasPets === 'boolean') {
+    updates.hasPets = params.hasPets;
   }
 
   let nextImageUrls = params.existingImageUrls ?? [];
