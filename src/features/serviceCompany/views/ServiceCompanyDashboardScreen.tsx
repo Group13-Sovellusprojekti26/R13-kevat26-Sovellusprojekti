@@ -4,6 +4,8 @@ import { Text, Card, Surface, useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../../shared/components/Screen';
 import { useServiceCompanyVM } from '../viewmodels/useServiceCompanyVM';
+import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
+import { isClosedStatus, isOpenStatus } from '@/shared/utils/faultReportStatusActions';
 
 /**
  * Main dashboard screen for service company users
@@ -13,6 +15,7 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { profile, loadProfile, isLoading } = useServiceCompanyVM();
+  const reports = useCompanyFaultReportsVM(state => state.reports);
 
   useEffect(() => {
     loadProfile();
@@ -31,6 +34,9 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
   const welcomeName = profile.companyName
     ? profile.companyName
     : [profile.firstName, profile.lastName].filter(Boolean).join(' ');
+
+  const openCount = reports.filter(report => isOpenStatus(report.status)).length;
+  const completedCount = reports.filter(report => isClosedStatus(report.status)).length;
 
   return (
     <Screen scrollable safeAreaEdges={['right', 'bottom', 'left']}>
@@ -70,14 +76,14 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
-            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.primary }]}>0</Text>
+            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{openCount}</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onPrimaryContainer }}>
               {t('serviceCompany.openFaults')}
             </Text>
           </Surface>
 
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={0}>
-            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.tertiary }]}>0</Text>
+            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.tertiary }]}>{completedCount}</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onTertiaryContainer }}>
               {t('serviceCompany.completedFaults')}
             </Text>

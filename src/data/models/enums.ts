@@ -1,9 +1,15 @@
 // Firebase status enum
 export enum FaultReportStatus {
+  CREATED = 'created',
   OPEN = 'open',
   IN_PROGRESS = 'in_progress',
+  WAITING = 'waiting',
+  COMPLETED = 'completed',
+  INCOMPLETE = 'incomplete',
+  NOT_POSSIBLE = 'not_possible',
   RESOLVED = 'resolved',
   CLOSED = 'closed',
+  CANCELLED = 'cancelled',
 }
 
 // Urgency levels

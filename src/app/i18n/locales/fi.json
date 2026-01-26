@@ -70,11 +70,24 @@
   "faults": {
     "title": "Vikailmoitukset",
     "createTitle": "Uusi vikailmoitus",
+    "editTitle": "Muokkaa vikailmoitusta",
+    "detailTitle": "Vikailmoitus",
     "description": "Kuvaus",
     "location": "Sijainti",
+    "additionalInfoTitle": "Lisätiedot huollolle",
+    "allowMasterKeyAccess": "Huolto saa tulla yleisavaimella",
+    "hasPets": "Asunnossa on lemmikkejä",
+    "booleanYes": "Kyllä",
+    "booleanNo": "Ei",
     "submit": "Lähetä",
+    "update": "Tallenna muutokset",
     "cancel": "Peruuta",
+    "close": "Peruuta vikailmoitus",
+    "closeTitle": "Peruuta vikailmoitus",
+    "closeConfirm": "Haluatko varmasti peruuttaa tämän vikailmoituksen?",
+    "closeAction": "Peruuta",
     "addImage": "Lisää kuva",
+    "images": "Kuvat",
     "deleteImage": "Poista kuva",
     "deleteImageConfirm": "Haluatko varmasti poistaa tämän kuvan?",
     "urgent": "Kiireellinen",
@@ -87,6 +100,58 @@
     "statusInProgress": "Käsittelyssä",
     "statusResolved": "Ratkaistu",
     "statusClosed": "Suljettu",
+    "statusCancelled": "Peruttu",
+    "status": {
+      "created": "Luotu",
+      "open": "Avoin",
+      "inProgress": "Työn alla",
+      "waiting": "Jonossa",
+      "completed": "Valmis",
+      "incomplete": "Kesken",
+      "notPossible": "Ei mahdollista",
+      "cancelled": "Peruttu",
+      "resolved": "Ratkaistu",
+      "closed": "Suljettu"
+    },
+    "statusButtons": {
+      "startWork": "Aloita työ",
+      "markResolved": "Merkitse ratkaistuksi",
+      "markClosed": "Sulje ilmoitus",
+      "cancelWork": "Peruuta ilmoitus"
+    },
+    "statusActions": {
+      "open": "Avaa ilmoitus",
+      "startWork": "Aloita työ",
+      "moveToQueue": "Siirrä jonoon",
+      "resumeWork": "Jatka työtä",
+      "markCompleted": "Merkitse valmiiksi",
+      "markIncomplete": "Merkitse keskeneräiseksi",
+      "markNotPossible": "Merkitse mahdottomaksi",
+      "cancel": "Peruuta ilmoitus"
+    },
+    "statusErrorPermission": "Sinulla ei ole oikeutta muuttaa vikailmoituksen tilaa.",
+    "statusErrorTransition": "Tilaa ei voi vaihtaa tässä vaiheessa.",
+    "statusError": {
+      "permission": "Sinulla ei ole oikeutta muuttaa vikailmoituksen tilaa.",
+      "transition": "Tilaa ei voi vaihtaa tässä vaiheessa.",
+      "generic": "Tilaa ei voitu päivittää. Yritä uudelleen."
+    },
+    "statusConfirm": {
+      "title": "Vahvista tilan muutos",
+      "cancelBody": "Haluatko varmasti peruuttaa tämän vikailmoituksen?",
+      "notPossibleBody": "Haluatko varmasti merkitä tämän ilmoituksen mahdottomaksi?"
+    },
+    "filterButton": "Suodatin: {{filter}}",
+    "filterTitle": "Suodatin",
+    "filters": {
+      "all": "Kaikki",
+      "open": "Avoin",
+      "inProgress": "Työn alla",
+      "waiting": "Jonossa",
+      "done": "Valmis",
+      "failed": "Epäonnistunut",
+      "cancelled": "Peruttu"
+    },
     "descriptionRequired": "Kuvaus on pakollinen",
     "descriptionMinLength": "Kuvauksen tulee olla vähintään {{min}} merkkiä",
     "descriptionMaxLength": "Kuvaus saa olla enintään {{max}} merkkiä",
@@ -98,7 +163,13 @@
     "titleRequired": "Otsikko on pakollinen",
     "createSuccess": "Vikailmoitus lähetetty",
     "createError": "Vikailmoituksen lähetys epäonnistui",
+    "updateSuccess": "Vikailmoitus päivitetty",
+    "updateError": "Vikailmoituksen päivitys epäonnistui",
+    "createdAt": "Luotu",
     "noReports": "Ei vikailmoituksia"
+  },
+  "faultReport": {
+    "updateSuccess": "Muutokset tallennettu"
   },
   "common": {
     "loading": "Ladataan...",
@@ -111,6 +182,7 @@
     "delete": "Poista",
     "remove": "Poista",
     "back": "Takaisin",
+    "confirm": "Vahvista",
     "logout": "Kirjaudu ulos",
     "copied": "Kopioitu leikepöydälle",
     "success": "Onnistui",
@@ -187,13 +259,16 @@
       "welcome": "Tervetuloa!",
       "welcomeWithName": "Tervetuloa, {{name}}!",
       "welcomeMessage": "Täältä voit raportoida vikoja asunnossasi ja seurata vikailmoitustesi tilaa.",
+      "welcomeCreateMessage": "Täältä voit ilmoittaa uudesta viasta asunnossasi.",
+      "createFaultReport": "Tee vikailmoitus",
       "deleteAccount": "Poista tili",
       "deleteAccountMessage": "Tämä poistaa tilisi, kirjautumistiedot ja kaikki sinun vikailmoituksesi. Tätä toimintoa ei voi perua.",
       "deleteAccountSuccess": "Tilisi on poistettu",
       "deleteAccountError": "Tilin poistaminen epäonnistui",
       "yourInfo": "Tietosi",
       "name": "Nimi",
-      "faultReports": "Vikailmoitukset"
+      "faultReports": "Vikailmoitukset",
+      "faultReportsHelper": "Näytä ja muokkaa omia vikailmoituksia"
     }
   },
   "housingCompany": {
@@ -207,6 +282,8 @@
       "partnersSectionTitle": "Lisätiedot",
       "faultReports": "Vikailmoitukset",
       "announcements": "Tiedotteet",
+      "openFaults": "Avoimet vikailmoitukset",
+      "completedFaults": "Valmiit vikailmoitukset",
       "manageFaults": "Hallinnoi vikailmoituksia",
       "manageFaultsTab": "Vikailmoitukset",
       "manageAnnouncements": "Hallinnoi tiedotteita",

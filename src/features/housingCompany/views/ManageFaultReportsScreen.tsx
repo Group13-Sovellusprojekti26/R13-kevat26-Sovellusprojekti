@@ -1,17 +1,209 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl, Modal } from 'react-native';
+import { Text, RadioButton, Surface, useTheme } from 'react-native-paper';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { ManagementPlaceholderScreen } from '@/shared/components/ManagementPlaceholderScreen';
+import { Screen } from '@/shared/components/Screen';
+import { SkeletonCard } from '@/shared/components/SkeletonCard';
+import {
+  filterReportsByStatus,
+  FaultReportFilter,
+  useCompanyFaultReportsVM,
+} from '@/shared/viewmodels/useCompanyFaultReportsVM';
+import { TFButton } from '@/shared/components/TFButton';
+import { FaultReport } from '@/data/models/FaultReport';
+import { FaultReportCard } from '@/shared/components/FaultReportCard';
 
 /**
  * Manage Fault Reports Screen for housing company
  * Shows and allows management of all fault reports
  */
 export const ManageFaultReportsScreen: React.FC = () => {
+  console.log('ManageFaultReportsScreen mounted');
   const { t } = useTranslation();
-  return (
-    <ManagementPlaceholderScreen
-      title={t('housingCompany.dashboard.manageFaults')}
-      message={t('housingCompany.dashboard.faultReportsComingSoon')}
+  const theme = useTheme();
+  const navigation = useNavigation<any>();
+  const reports = useCompanyFaultReportsVM(state => state.reports);
+  const loading = useCompanyFaultReportsVM(state => state.loading);
+  const error = useCompanyFaultReportsVM(state => state.error);
+  const refreshing = useCompanyFaultReportsVM(state => state.refreshing);
+  const loadReports = useCompanyFaultReportsVM(state => state.loadReports);
+  const refresh = useCompanyFaultReportsVM(state => state.refresh);
+  const [filter, setFilter] = useState<FaultReportFilter>('all');
+  const [filterVisible, setFilterVisible] = useState(false);
+
+  console.log('ManageFaultReportsScreen', {
+    renderedCount: reports.length,
+    loading,
+    refreshing,
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [loadReports])
+  );
+
+  const filteredReports = useMemo(() => filterReportsByStatus(reports, filter), [filter, reports]);
+  const filterLabel = useMemo(() => {
+    switch (filter) {
+      case 'open':
+        return t('faults.filters.open');
+      case 'in_progress':
+        return t('faults.filters.inProgress');
+      case 'waiting':
+        return t('faults.filters.waiting');
+      case 'done':
+        return t('faults.filters.done');
+      case 'failed':
+        return t('faults.filters.failed');
+      case 'cancelled':
+        return t('faults.filters.cancelled');
+      case 'all':
+      default:
+        return t('faults.filters.all');
+    }
+  }, [filter, t]);
+
+  const renderItem = ({ item }: { item: FaultReport }) => (
+    <FaultReportCard
+      report={item}
+      onPress={() => navigation.navigate('FaultReportDetails', { faultReportId: item.id })}
     />
   );
+
+  if (error) {
+    return (
+      <Screen>
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Screen>
+        <View style={styles.loadingContainer}>
+          {[1, 2, 3].map(i => (
+            <SkeletonCard key={i} />
+          ))}
+        </View>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen safeAreaEdges={['left', 'right', 'bottom']}>
+      <FlatList
+        data={filteredReports}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.filterContainer}>
+            <TFButton
+              title={t('faults.filterButton', { filter: filterLabel })}
+              mode="outlined"
+              icon="filter-variant"
+              onPress={() => setFilterVisible(true)}
+              fullWidth
+            />
+          </View>
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>{t('faults.noReports')}</Text>
+          </View>
+        }
+        showsVerticalScrollIndicator={false}
+      />
+      <Modal
+        transparent
+        visible={filterVisible}
+        animationType="fade"
+        onRequestClose={() => setFilterVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Surface style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
+            elevation={4}
+          >
+            <Text variant="titleMedium" style={styles.modalTitle}>
+              {t('faults.filterTitle')}
+            </Text>
+            <RadioButton.Group
+              onValueChange={(value) => {
+                setFilter(value as FaultReportFilter);
+                setFilterVisible(false);
+              }}
+              value={filter}
+            >
+              <RadioButton.Item label={t('faults.filters.all')} value="all" />
+              <RadioButton.Item label={t('faults.filters.open')} value="open" />
+              <RadioButton.Item label={t('faults.filters.inProgress')} value="in_progress" />
+              <RadioButton.Item label={t('faults.filters.waiting')} value="waiting" />
+              <RadioButton.Item label={t('faults.filters.done')} value="done" />
+              <RadioButton.Item label={t('faults.filters.failed')} value="failed" />
+              <RadioButton.Item label={t('faults.filters.cancelled')} value="cancelled" />
+            </RadioButton.Group>
+            <TFButton
+              title={t('common.cancel')}
+              mode="text"
+              onPress={() => setFilterVisible(false)}
+              fullWidth
+            />
+          </Surface>
+        </View>
+      </Modal>
+    </Screen>
+  );
 };
+
+const styles = StyleSheet.create({
+  listContent: {
+    padding: 16,
+    paddingBottom: 96,
+  },
+  filterContainer: {
+    marginBottom: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalContent: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+  },
+  modalTitle: {
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  errorText: {
+    color: '#D32F2F',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    padding: 16,
+  },
+  emptyContainer: {
+    marginTop: 120,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#777',
+  },
+});

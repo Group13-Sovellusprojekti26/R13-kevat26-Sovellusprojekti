@@ -44,20 +44,29 @@ service cloud.firestore {
         && request.resource.data.status == 'open'
         && request.resource.data.keys().hasAll(['buildingId', 'title', 'description', 'status', 'createdBy', 'housingCompanyId', 'createdAt', 'updatedAt']);
       
-      // Update: Users can update their own reports to add images
-      // Only imageUrls and updatedAt fields can be modified
-      // Status changes ONLY through Cloud Functions (admin/maintenance)
+      // Update: users can update their own report details only
+      // Allow ONLY description + imageUrls when status is created/open
+      // Block status/timestamp/comment updates from client
       allow update: if isAuthenticated()
         && resource.data.createdBy == request.auth.uid
-        && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.housingCompanyId == resource.data.housingCompanyId
+        && (resource.data.status == 'created' || resource.data.status == 'open')
         && request.resource.data.status == resource.data.status
-        && request.resource.data.title == resource.data.title
-        && request.resource.data.description == resource.data.description
-        && request.resource.data.buildingId == resource.data.buildingId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['imageUrls', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'description',
+          'imageUrls'
+        ])
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'status',
+          'updatedAt',
+          'updatedBy',
+          'resolvedAt',
+          'comment',
+          'createdBy',
+          'housingCompanyId'
+        ]);
       
-      // Delete: ONLY through Cloud Functions (admin)
+      // Delete: disabled for residents
       allow delete: if false;
     }
     

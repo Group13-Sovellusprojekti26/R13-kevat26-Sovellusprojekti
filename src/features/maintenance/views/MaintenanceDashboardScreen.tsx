@@ -1,9 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text, Surface, useTheme, Card } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
+import { useFocusEffect } from '@react-navigation/native';
 import { Screen } from '../../../shared/components/Screen';
 import { useMaintenanceVM } from '../viewmodels/useMaintenanceVM';
+import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
+import { isClosedStatus, isOpenStatus } from '@/shared/utils/faultReportStatusActions';
 
 /**
  * Dashboard screen for maintenance/property manager users
@@ -13,14 +16,29 @@ export const MaintenanceDashboardScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { profile, loadProfile } = useMaintenanceVM();
+  const reports = useCompanyFaultReportsVM(state => state.reports);
+  const loadReports = useCompanyFaultReportsVM(state => state.loadReports);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
+  useEffect(() => {
+    loadReports();
+  }, [loadReports]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReports();
+    }, [loadReports])
+  );
+
   const welcomeName = profile?.companyName
     ? profile.companyName
     : [profile?.firstName, profile?.lastName].filter(Boolean).join(' ');
+
+  const openCount = reports.filter(report => isOpenStatus(report.status)).length;
+  const completedCount = reports.filter(report => isClosedStatus(report.status)).length;
 
   return (
     <Screen scrollable safeAreaEdges={['right', 'bottom', 'left']}>
@@ -62,14 +80,14 @@ export const MaintenanceDashboardScreen: React.FC = () => {
         {/* Quick Stats */}
         <View style={styles.statsContainer}>
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.primaryContainer }]} elevation={0}>
-            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.primary }]}>0</Text>
+            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{openCount}</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onPrimaryContainer }}>
               {t('maintenance.dashboard.openFaults')}
             </Text>
           </Surface>
 
           <Surface style={[styles.statCard, { backgroundColor: theme.colors.tertiaryContainer }]} elevation={0}>
-            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.tertiary }]}>0</Text>
+            <Text variant="displaySmall" style={[styles.statNumber, { color: theme.colors.tertiary }]}>{completedCount}</Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onTertiaryContainer }}>
               {t('maintenance.dashboard.completedFaults')}
             </Text>

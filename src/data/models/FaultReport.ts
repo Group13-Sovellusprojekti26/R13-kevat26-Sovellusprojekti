@@ -3,7 +3,10 @@ import { FaultReportStatus, UrgencyLevel } from './enums';
 export interface FaultReport {
   id: string;
   userId: string;
+  createdByUserId: string;
+  apartmentId?: string;
   buildingId: string;
+  housingCompanyId: string;
   apartmentNumber?: string;
   title: string;
   description: string;
@@ -15,6 +18,8 @@ export interface FaultReport {
   updatedAt: Date;
   resolvedAt?: Date;
   assignedTo?: string;
+  allowMasterKeyAccess?: boolean;
+  hasPets?: boolean;
 }
 
 export interface CreateFaultReportInput {
@@ -24,5 +29,7 @@ export interface CreateFaultReportInput {
   urgency: UrgencyLevel;
   apartmentNumber?: string;
   imageUris?: string[];
+  allowMasterKeyAccess?: boolean;
+  hasPets?: boolean;
 }
 

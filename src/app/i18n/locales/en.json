@@ -68,11 +68,24 @@
   "faults": {
     "title": "Fault Reports",
     "createTitle": "New Fault Report",
+    "editTitle": "Edit fault report",
+    "detailTitle": "Fault report",
     "description": "Description",
     "location": "Location",
+    "additionalInfoTitle": "Additional information for maintenance",
+    "allowMasterKeyAccess": "Maintenance may enter with master key",
+    "hasPets": "There are pets in the apartment",
+    "booleanYes": "Yes",
+    "booleanNo": "No",
     "submit": "Submit",
+    "update": "Save changes",
     "cancel": "Cancel",
+    "close": "Cancel fault report",
+    "closeTitle": "Cancel fault report",
+    "closeConfirm": "Are you sure you want to cancel this fault report?",
+    "closeAction": "Cancel",
     "addImage": "Add image",
+    "images": "Images",
     "deleteImage": "Remove image",
     "deleteImageConfirm": "Are you sure you want to remove this image?",
     "urgent": "Urgent",
@@ -85,6 +98,58 @@
     "statusInProgress": "In progress",
     "statusResolved": "Resolved",
     "statusClosed": "Closed",
+    "statusCancelled": "Cancelled",
+    "status": {
+      "created": "Created",
+      "open": "Open",
+      "inProgress": "In progress",
+      "waiting": "Waiting",
+      "completed": "Completed",
+      "incomplete": "Incomplete",
+      "notPossible": "Not possible",
+      "cancelled": "Cancelled",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "statusButtons": {
+      "startWork": "Start work",
+      "markResolved": "Mark as resolved",
+      "markClosed": "Close report",
+      "cancelWork": "Cancel report"
+    },
+    "statusActions": {
+      "open": "Open report",
+      "startWork": "Start work",
+      "moveToQueue": "Move to queue",
+      "resumeWork": "Resume work",
+      "markCompleted": "Mark completed",
+      "markIncomplete": "Mark incomplete",
+      "markNotPossible": "Mark not possible",
+      "cancel": "Cancel report"
+    },
+    "statusErrorPermission": "You do not have permission to change the fault report status.",
+    "statusErrorTransition": "The status cannot be changed at this time.",
+    "statusError": {
+      "permission": "You do not have permission to change the fault report status.",
+      "transition": "The status cannot be changed at this time.",
+      "generic": "Something went wrong while changing the status."
+    },
+    "statusConfirm": {
+      "title": "Confirm status change",
+      "cancelBody": "Are you sure you want to cancel this fault report?",
+      "notPossibleBody": "Are you sure you want to mark this report as not possible?"
+    },
+    "filterButton": "Filter: {{filter}}",
+    "filterTitle": "Filter",
+    "filters": {
+      "all": "All",
+      "open": "Open",
+      "inProgress": "In progress",
+      "waiting": "Waiting",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
     "descriptionRequired": "Description is required",
     "descriptionMinLength": "Description must be at least {{min}} characters",
     "descriptionMaxLength": "Description must be at most {{max}} characters",
@@ -96,7 +161,13 @@
     "titleRequired": "Title is required",
     "createSuccess": "Fault report submitted",
     "createError": "Failed to submit fault report",
+    "updateSuccess": "Fault report updated",
+    "updateError": "Failed to update fault report",
+    "createdAt": "Created",
     "noReports": "No fault reports"
+  },
+  "faultReport": {
+    "updateSuccess": "Changes saved"
   },
   "common": {
     "loading": "Loading...",
@@ -109,6 +180,7 @@
     "delete": "Delete",
     "remove": "Remove",
     "back": "Back",
+    "confirm": "Confirm",
     "logout": "Log out",
     "copied": "Copied to clipboard",
     "success": "Success",
@@ -185,13 +257,16 @@
       "welcome": "Welcome!",
       "welcomeWithName": "Welcome, {{name}}!",
       "welcomeMessage": "From here you can report faults in your apartment and track the status of your fault reports.",
+      "welcomeCreateMessage": "From here you can report a new fault in your apartment.",
+      "createFaultReport": "Create fault report",
       "deleteAccount": "Delete account",
       "deleteAccountMessage": "This will delete your account, login credentials, and all your fault reports. This action cannot be undone.",
       "deleteAccountSuccess": "Your account has been deleted",
       "deleteAccountError": "Failed to delete account",
       "yourInfo": "Your Information",
       "name": "Name",
-      "faultReports": "Fault Reports"
+      "faultReports": "Fault Reports",
+      "faultReportsHelper": "View and edit your fault reports"
     }
   },
   "housingCompany": {
@@ -210,7 +285,9 @@
       "manageAnnouncements": "Manage Announcements",
       "manageAnnouncementsTab": "Announcements",
       "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
-      "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here."
+      "announcementsComingSoon": "Announcement management coming soon. In the future, you will be able to create and manage announcements for residents here.",
+      "openFaults": "Open Fault Reports",
+      "completedFaults": "Completed Fault Reports"
     },
     "residents": {
       "title": "Residents",
