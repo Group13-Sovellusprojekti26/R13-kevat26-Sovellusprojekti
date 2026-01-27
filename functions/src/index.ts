@@ -373,11 +373,26 @@ export const publishAnnouncement = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin"]);
+    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
 
-    const {title, content, audienceBuildingId} = request.data || {};
+    const {title, content, type, startDate, startTime, endDate, endTime, audienceBuildingId, isPinned, imageUrls} = request.data || {};
+    
+    console.log("publishAnnouncement received:", {
+      title: typeof title,
+      content: typeof content,
+      startDate: typeof startDate,
+      startDateValue: startDate,
+      endDate: typeof endDate,
+      endDateValue: endDate,
+      startTime: typeof startTime,
+      endTime: typeof endTime,
+    });
+    
     if (typeof title !== "string" || typeof content !== "string") {
       throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+    if (!startDate || !endDate) {
+      throw new HttpsError("invalid-argument", "startDate and endDate are required.");
     }
 
     const docRef = db.collection("announcements").doc();
@@ -385,10 +400,20 @@ export const publishAnnouncement = onCall(
       housingCompanyId,
       title,
       content,
+      type: typeof type === "string" ? type : "general",
+      startDate: new Date(startDate),
+      startTime: typeof startTime === "string" ? startTime : null,
+      endDate: new Date(endDate),
+      endTime: typeof endTime === "string" ? endTime : null,
       audienceBuildingId:
         typeof audienceBuildingId === "string" ? audienceBuildingId : null,
+      isPinned: typeof isPinned === "boolean" ? isPinned : false,
+      imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       createdBy: uid,
+      authorId: uid,
+      authorName: "", // Will be populated by client profile
     });
 
     return {id: docRef.id};
@@ -408,7 +433,7 @@ export const deleteAnnouncement = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin"]);
+    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
 
     const {announcementId} = request.data || {};
     if (typeof announcementId !== "string") {

@@ -5,6 +5,7 @@ import { ResidentTabs } from './ResidentTabs';
 import { ImagePreviewScreen } from '../../features/resident/faultReports/views/ImagePreviewScreen';
 import { SettingsScreen } from '../../features/settings/views/SettingsScreen';
 import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
+import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 
 export type ResidentStackParamList = {
   Tabs: undefined;
@@ -14,6 +15,7 @@ export type ResidentStackParamList = {
     index: number;
   };
   Settings: undefined;
+  AnnouncementDetail: { announcementId: string };
 };
 
 const Stack = createNativeStackNavigator<ResidentStackParamList>();
@@ -44,6 +46,14 @@ export const ResidentStack: React.FC = () => {
         component={SettingsScreen}
         options={{
           headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="AnnouncementDetail"
+        component={AnnouncementDetailScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.detailTitle'),
         }}
       />
     </Stack.Navigator>

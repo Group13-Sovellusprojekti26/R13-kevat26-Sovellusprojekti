@@ -12,18 +12,18 @@ import { Announcement } from '@/data/models/Announcement';
 import { getUserProfile } from '@/data/repositories/users.repo';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { ServiceCompanyStackParamList } from '@/app/navigation/ServiceCompanyStack';
+import type { ResidentStackParamList } from '@/app/navigation/ResidentStack';
 import { haptic } from '@/shared/utils/haptics';
 import { AnnouncementCard } from '../../housingCompany/views/components/AnnouncementCard';
 
 /**
- * Announcements screen for service company (huolto) users
+ * Announcements screen for resident users
  * Read-only view of announcements for their housing company
  */
-export const ManageAnnouncementsScreen: React.FC = () => {
+export const ResidentAnnouncementsScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<ServiceCompanyStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
   const [housingCompanyId, setHousingCompanyId] = React.useState<string | null>(null);
 
   // Memoize locale to avoid recalculation on every render

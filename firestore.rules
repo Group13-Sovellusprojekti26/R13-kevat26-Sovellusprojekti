@@ -95,14 +95,14 @@ service cloud.firestore {
       allow read: if isAuthenticated() 
         && resource.data.housingCompanyId == getUserHousingCompanyId();
       
-      // Create: ONLY through Cloud Functions (admin)
-      allow create: if false;
+      // Update: authenticated users with admin/property_manager/housing_company/maintenance roles
+      allow update: if isAuthenticated()
+        && (getUserRole() == 'admin' || getUserRole() == 'property_manager' || getUserRole() == 'housing_company' || getUserRole() == 'maintenance')
+        && resource.data.housingCompanyId == getUserHousingCompanyId()
+        && request.resource.data.housingCompanyId == resource.data.housingCompanyId;
       
-      // Update: ONLY through Cloud Functions (admin)
-      allow update: if false;
-      
-      // Delete: ONLY through Cloud Functions (admin)
-      allow delete: if false;
+      // Create & Delete: ONLY through Cloud Functions
+      allow create, delete: if false;
     }
     
     // ========== USER PROFILES ==========

@@ -8,12 +8,14 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ResidentStackParamList } from './ResidentStack';
 import { ResidentDashboardScreen } from '../../features/resident/views/ResidentDashboardScreen';
+import { ResidentAnnouncementsScreen } from '../../features/resident/views/ResidentAnnouncementsScreen';
 import { FaultReportListScreen } from '../../features/resident/faultReports/views/FaultReportListScreen';
 import { CreateFaultReportScreen } from '../../features/resident/faultReports/views/CreateFaultReportScreen';
 import { signOut } from '../../features/auth/services/auth.service';
 
 export type ResidentTabsParamList = {
   Dashboard: undefined;
+  Announcements: undefined;
   FaultReports: undefined;
   CreateFaultReport: { faultReportId?: string } | undefined;
 };
@@ -66,6 +68,42 @@ export const ResidentTabs: React.FC = () => {
           tabBarLabel: t('resident.dashboard.tabLabel'),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home" size={size} color={color} />
+          ),
+          headerRight: () => {
+            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
+            return (
+              <View style={styles.headerActions}>
+                <IconButton
+                  icon="cog-outline"
+                  onPress={() => navigation.navigate('Settings')}
+                />
+                <IconButton
+                  icon="logout"
+                  onPress={handleLogout}
+                />
+              </View>
+            );
+          },
+        }}
+      />
+      <Tab.Screen
+        name="Announcements"
+        component={ResidentAnnouncementsScreen}
+        options={{
+          title: t('announcements.title'),
+          headerTitleAlign: 'left',
+          headerTitleStyle: {
+            fontSize: 18,
+          },
+          headerTitleContainerStyle: {
+            paddingRight: 96,
+          },
+          headerRightContainerStyle: {
+            paddingRight: 4,
+          },
+          tabBarLabel: t('announcements.title'),
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="bell" size={size} color={color} />
           ),
           headerRight: () => {
             const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();

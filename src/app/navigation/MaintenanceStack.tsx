@@ -4,11 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { MaintenanceTabs } from './MaintenanceTabs';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
+import { CreateAnnouncementScreen } from '@/features/housingCompany/views/CreateAnnouncementScreen';
+import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
+import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 
 export type MaintenanceStackParamList = {
   Tabs: undefined;
   FaultReportDetails: { faultReportId: string };
   Settings: undefined;
+  CreateAnnouncement: undefined;
+  EditAnnouncement: { announcementId: string };
+  AnnouncementDetail: { announcementId: string };
 };
 
 const Stack = createNativeStackNavigator<MaintenanceStackParamList>();
@@ -41,6 +47,30 @@ export const MaintenanceStack: React.FC = () => {
         component={SettingsScreen}
         options={{
           headerShown: true,
+        }}
+      />
+      <Stack.Screen 
+        name="CreateAnnouncement" 
+        component={CreateAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.createTitle'),
+        }}
+      />
+      <Stack.Screen 
+        name="EditAnnouncement" 
+        component={EditAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.editTitle'),
+        }}
+      />
+      <Stack.Screen 
+        name="AnnouncementDetail" 
+        component={AnnouncementDetailScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.detailTitle'),
         }}
       />
     </Stack.Navigator>

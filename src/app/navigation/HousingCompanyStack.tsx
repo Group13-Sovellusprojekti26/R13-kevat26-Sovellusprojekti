@@ -9,6 +9,9 @@ import { ResidentListScreen } from '@/features/housingCompany/views/ResidentList
 import { BuildingResidentsScreen } from '@/features/housingCompany/views/BuildingResidentsScreen';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
+import { CreateAnnouncementScreen } from '@/features/housingCompany/views/CreateAnnouncementScreen';
+import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
+import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 
 export type HousingCompanyStackParamList = {
   Tabs: undefined;
@@ -19,6 +22,9 @@ export type HousingCompanyStackParamList = {
   ResidentList: undefined;
   BuildingResidents: { buildingId: string };
   Settings: undefined;
+  CreateAnnouncement: undefined;
+  EditAnnouncement: { announcementId: string };
+  AnnouncementDetail: { announcementId: string };
 };
 
 const Stack = createNativeStackNavigator<HousingCompanyStackParamList>();
@@ -93,6 +99,30 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('common.settings'),
+        }}
+      />
+      <Stack.Screen 
+        name="CreateAnnouncement" 
+        component={CreateAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.createTitle'),
+        }}
+      />
+      <Stack.Screen 
+        name="EditAnnouncement" 
+        component={EditAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.editTitle'),
+        }}
+      />
+      <Stack.Screen 
+        name="AnnouncementDetail" 
+        component={AnnouncementDetailScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.detailTitle'),
         }}
       />
     </Stack.Navigator>
