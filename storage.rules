@@ -28,10 +28,22 @@ service firebase.storage {
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
     
-    // ========== ANNOUNCEMENT IMAGES (future use) ==========
-    match /announcements/{announcementId}/{imageFile} {
+    // ========== ANNOUNCEMENT ATTACHMENTS ==========
+    // Path: /announcements/{housingCompanyId}/{attachmentId}/file
+    // Upload is handled by Cloud Function (uploadAnnouncementAttachment)
+    // Updates/deletions handled by Cloud Function (updateAnnouncementWithAttachments, deleteAnnouncement)
+    match /announcements/{housingCompanyId}/{attachmentFolder}/{allFiles=**} {
       allow read: if isAuthenticated();
-      // Uploads will be handled via Cloud Function when implemented
+      // No direct write access - uploads/deletes go through Cloud Functions
+      allow write: if false;
+    }
+    
+    // ========== LEGACY ANNOUNCEMENT IMAGES ==========
+    // Path: /announcements/{housingCompanyId}/{fileName}_{timestamp}.{ext}
+    // Upload is handled by Cloud Function (uploadAnnouncementFile - DEPRECATED)
+    match /announcements/{housingCompanyId}/{imageFile} {
+      allow read: if isAuthenticated();
+      // No direct write access - uploads go through Cloud Function
       allow write: if false;
     }
     
@@ -41,3 +53,4 @@ service firebase.storage {
     }
   }
 }
+

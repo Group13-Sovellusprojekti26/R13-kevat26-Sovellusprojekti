@@ -10,9 +10,10 @@ import type { ServiceCompanyStackParamList } from './ServiceCompanyStack';
 import {
   ServiceCompanyDashboardScreen,
   ManageFaultReportsScreen,
-  ManageAnnouncementsScreen,
 } from '@/features/serviceCompany/views';
+import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
 import { signOut } from '@/features/auth/services/auth.service';
+import { UserRole } from '@/data/models/enums';
 
 export type ServiceCompanyTabsParamList = {
   Dashboard: undefined;
@@ -124,7 +125,6 @@ export const ServiceCompanyTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageAnnouncements"
-        component={ManageAnnouncementsScreen}
         options={{
           title: t('serviceCompany.manageAnnouncements'),
           headerTitleAlign: 'left',
@@ -157,7 +157,9 @@ export const ServiceCompanyTabs: React.FC = () => {
             );
           },
         }}
-      />
+      >
+        {() => <AnnouncementsScreen />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };

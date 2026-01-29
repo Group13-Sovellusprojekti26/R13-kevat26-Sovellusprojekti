@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ResidentStackParamList } from './ResidentStack';
 import { ResidentDashboardScreen } from '../../features/resident/views/ResidentDashboardScreen';
-import { ResidentAnnouncementsScreen } from '../../features/resident/views/ResidentAnnouncementsScreen';
+import { AnnouncementsScreen } from '../../features/housingCompany/views/AnnouncementsScreen';
 import { FaultReportListScreen } from '../../features/resident/faultReports/views/FaultReportListScreen';
 import { CreateFaultReportScreen } from '../../features/resident/faultReports/views/CreateFaultReportScreen';
 import { signOut } from '../../features/auth/services/auth.service';
@@ -88,7 +88,7 @@ export const ResidentTabs: React.FC = () => {
       />
       <Tab.Screen
         name="Announcements"
-        component={ResidentAnnouncementsScreen}
+        component={AnnouncementsScreen}
         options={{
           title: t('announcements.title'),
           headerTitleAlign: 'left',

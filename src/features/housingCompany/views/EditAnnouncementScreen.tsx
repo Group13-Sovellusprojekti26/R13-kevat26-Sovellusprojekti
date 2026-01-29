@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { Text, useTheme, SegmentedButtons, Button, Checkbox } from 'react-native-paper';
+import { View, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Pressable, FlatList } from 'react-native';
+import { Text, useTheme, Button, Checkbox, Surface, Modal, Portal, RadioButton, IconButton, Chip } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import i18n from '@/app/i18n/i18n';
 
 import { Screen } from '@/shared/components/Screen';
@@ -16,9 +18,19 @@ import { TFTextField } from '@/shared/components/TFTextField';
 import { useAnnouncementsVM } from '../viewmodels/useAnnouncementsVM';
 import { Announcement } from '@/data/models/Announcement';
 import { AnnouncementType } from '@/data/models/enums';
-import { getAnnouncementById } from '@/data/repositories/announcements.repo';
+import { getAnnouncementById, deleteAnnouncementAttachmentFile } from '@/data/repositories/announcements.repo';
 import { haptic } from '@/shared/utils/haptics';
+import { editAnnouncementStyles as styles } from '../styles/announcements.styles';
 import type { HousingCompanyStackParamList } from '@/app/navigation/HousingCompanyStack';
+import { MAX_ATTACHMENT_SIZE, MAX_ATTACHMENTS_PER_ANNOUNCEMENT, ALLOWED_ATTACHMENT_TYPES } from '@/shared/types/announcementAttachments.types';
+
+interface LocalAttachment {
+  id: string;
+  fileName: string;
+  size: number;
+  mimeType: string;
+  base64: string;
+}
 
 const MAX_TITLE_LENGTH = 100;
 const MAX_CONTENT_LENGTH = 1000;
@@ -44,6 +56,45 @@ type EditAnnouncementFormData = z.infer<typeof editAnnouncementSchema>;
 
 type EditAnnouncementRoute = RouteProp<HousingCompanyStackParamList, 'EditAnnouncement'>;
 
+/**
+ * Screen component for editing existing announcements.
+ * Loads announcement data and populates form with current values.
+ * Allows modifying title, content, type, dates, times, and pinned status.
+ * Provides delete functionality with confirmation dialog.
+ * 
+ * Responsibilities:
+ * - Fetch announcement by ID from route params
+ * - Display loading state while fetching
+ * - Populate form with current announcement data
+ * - Validate changes before submission
+ * - Show error/success feedback
+ * - Handle delete with confirmation alert
+ * - Auto-refresh list after update
+ *
+ * Form fields (same as create):
+ * - Title: 1-100 characters
+ * - Content: 1-1000 characters
+ * - Type: Dropdown selector
+ * - Start Date/Time: Optional
+ * - End Date/Time: Required
+ * - isPinned: Checkbox
+ *
+ * Features:
+ * - Loading spinner while fetching announcement
+ * - Delete button with confirmation alert
+ * - Disabled submit during save operation
+ * - Error state display
+ * - Auto-focus on first error field
+ * - Localized date/time pickers
+ * - Haptic feedback on interactions
+ *
+ * @component EditAnnouncementScreen
+ * @returns {JSX.Element} Form screen for editing announcements
+ *
+ * @example
+ * // Navigate with announcement ID
+ * navigation.navigate('EditAnnouncement', { announcementId: 'ann_123' })
+ */
 export const EditAnnouncementScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -52,7 +103,7 @@ export const EditAnnouncementScreen: React.FC = () => {
 
   const { announcementId } = route.params;
 
-  const { updateAnnouncement, deleteAnnouncement, loading, error, clearError } = useAnnouncementsVM();
+  const { updateAnnouncement, deleteAnnouncement, loading, error, clearError, uploadAttachments, updateAttachments, getRemoveAttachmentIds } = useAnnouncementsVM();
 
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [loadingAnnouncement, setLoadingAnnouncement] = useState(true);
@@ -60,6 +111,9 @@ export const EditAnnouncementScreen: React.FC = () => {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [typeModalVisible, setTypeModalVisible] = useState(false);
+  const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
 
   // Get current language for DateTimePicker locale
   const currentLanguage = i18n.language;
@@ -90,6 +144,7 @@ export const EditAnnouncementScreen: React.FC = () => {
         const data = await getAnnouncementById(announcementId);
         if (data) {
           setAnnouncement(data);
+          setExistingAttachments(data.attachments || []);
           reset({
             title: data.title,
             content: data.content,
@@ -162,6 +217,10 @@ export const EditAnnouncementScreen: React.FC = () => {
     async (data: EditAnnouncementFormData) => {
       haptic.medium();
       try {
+        // Upload new attachments
+        const newAttachmentIds = await uploadAttachments(attachments);
+
+        // Step 1: Update basic announcement fields
         await updateAnnouncement(announcementId, {
           title: data.title,
           content: data.content,
@@ -172,18 +231,191 @@ export const EditAnnouncementScreen: React.FC = () => {
           endDate: data.endDate,
           endTime: data.endTime,
         });
+
+        // Step 2: Update attachments if changed
+        const remainingAttachmentIds = existingAttachments.map(att => att.id);
+        const allAttachmentIds = [...remainingAttachmentIds, ...newAttachmentIds];
+        const originalAttachmentIds = announcement?.attachments?.map(att => att.id) || [];
+        const removedAttachmentIds = getRemoveAttachmentIds(
+          announcement?.attachments || [],
+          existingAttachments
+        );
+
+        if (newAttachmentIds.length > 0 || removedAttachmentIds.length > 0) {
+          await updateAttachments(announcementId, allAttachmentIds, removedAttachmentIds);
+        }
+
         haptic.success();
         navigation.goBack();
       } catch (err: any) {
         haptic.error();
-        // Concurrent deletion is already handled in ViewModel
         if (err?.code !== 'functions/not-found') {
           Alert.alert(t('common.error'), t('announcements.updateFailed'));
         }
       }
     },
-    [updateAnnouncement, announcementId, navigation, t]
+    [updateAnnouncement, announcementId, navigation, t, attachments, existingAttachments, announcement]
   );
+
+  const handleRemoveExistingAttachment = useCallback((attachmentId: string) => {
+    setExistingAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  }, []);
+
+  const handleRemoveLocalAttachment = useCallback((attachmentId: string) => {
+    setAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  }, []);
+
+  const handleAttachmentUpload = useCallback(
+    async (fileName: string, base64: string, mimeType: string) => {
+      try {
+        const size = Math.ceil((base64.length * 3) / 4);
+
+        if (!ALLOWED_ATTACHMENT_TYPES.includes(mimeType as any)) {
+          Alert.alert(
+            t('announcements.invalidFileType'),
+            t('announcements.onlyImagesAndPdf')
+          );
+          return;
+        }
+
+        if (size > MAX_ATTACHMENT_SIZE) {
+          Alert.alert(
+            t('announcements.fileTooLarge'),
+            t('announcements.fileSizeExceeded', { max: '10 MB' })
+          );
+          return;
+        }
+
+        // Generate temporary ID for local storage
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        // Store attachment locally (base64 + metadata)
+        setAttachments((prev) => [
+          ...prev,
+          {
+            id: tempId,
+            fileName,
+            size,
+            mimeType,
+            base64,
+          },
+        ]);
+
+        haptic.success();
+      } catch (error) {
+        haptic.error();
+        Alert.alert(t('common.error'), t('announcements.attachmentSelectionFailed'));
+      }
+    },
+    [t]
+  );
+
+  const handlePickImage = useCallback(async () => {
+    if ((attachments.length + existingAttachments.length) >= MAX_ATTACHMENTS_PER_ANNOUNCEMENT) {
+      Alert.alert(
+        t('announcements.attachmentLimit'),
+        t('announcements.maxAttachmentsReached', { max: MAX_ATTACHMENTS_PER_ANNOUNCEMENT })
+      );
+      return;
+    }
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(t('common.error'), t('announcements.libraryPermissionDenied'));
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const fileName = asset.fileName || `image-${Date.now()}.jpg`;
+        const mimeType = asset.mimeType || 'image/jpeg';
+
+        if (asset.base64) {
+          await handleAttachmentUpload(fileName, asset.base64, mimeType);
+        }
+      }
+    } catch (error) {
+      Alert.alert(t('common.error'), t('announcements.imagePickFailed'));
+    }
+  }, [attachments.length, existingAttachments.length, t, handleAttachmentUpload]);
+
+  const handlePickDocument = useCallback(async () => {
+    if ((attachments.length + existingAttachments.length) >= MAX_ATTACHMENTS_PER_ANNOUNCEMENT) {
+      Alert.alert(
+        t('announcements.attachmentLimit'),
+        t('announcements.maxAttachmentsReached', { max: MAX_ATTACHMENTS_PER_ANNOUNCEMENT })
+      );
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf'],
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        const fileName = asset.name || 'document.pdf';
+
+        try {
+          // Get file size from the size property returned by DocumentPicker
+          const size = asset.size || 0;
+          
+          if (size > MAX_ATTACHMENT_SIZE) {
+            Alert.alert(
+              t('announcements.fileTooLarge'),
+              t('announcements.fileSizeExceeded', { max: '10 MB' })
+            );
+            return;
+          }
+
+          // Fetch the file from URI and convert to base64
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+          const reader = new FileReader();
+
+          // Use a Promise to handle FileReader async operation
+          const base64 = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => {
+              const result = reader.result as string;
+              // Extract base64 part from data:application/pdf;base64,... format
+              const base64Data = result.split(',')[1] || result;
+              resolve(base64Data);
+            };
+            reader.onerror = () => reject(new Error('FileReader failed'));
+            reader.readAsDataURL(blob);
+          });
+
+          // Calculate size from base64
+          const fileSizeFromBase64 = Math.ceil((base64.length * 3) / 4);
+
+          if (fileSizeFromBase64 > MAX_ATTACHMENT_SIZE) {
+            Alert.alert(
+              t('announcements.fileTooLarge'),
+              t('announcements.fileSizeExceeded', { max: '10 MB' })
+            );
+            return;
+          }
+
+          await handleAttachmentUpload(fileName, base64, 'application/pdf');
+        } catch (error) {
+          console.error('Document processing error:', error);
+          Alert.alert(t('common.error'), t('announcements.documentPickFailed'));
+        }
+      }
+    } catch (error) {
+      console.error('Document pick error:', error);
+      Alert.alert(t('common.error'), t('announcements.documentPickFailed'));
+    }
+  }, [attachments.length, existingAttachments.length, t, handleAttachmentUpload]);
 
   const handleDeletePress = () => {
     Alert.alert(
@@ -231,7 +463,7 @@ export const EditAnnouncementScreen: React.FC = () => {
   }
 
   return (
-    <Screen scrollable>
+    <Screen scrollable safeAreaEdges={['left', 'right', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}
@@ -287,29 +519,67 @@ export const EditAnnouncementScreen: React.FC = () => {
             control={control}
             name="type"
             render={({ field: { value, onChange } }) => (
-              <SegmentedButtons
-                value={value}
-                onValueChange={(val) => onChange(val as AnnouncementType)}
-                buttons={[
-                  {
-                    value: AnnouncementType.GENERAL,
-                    label: t('announcements.types.general'),
-                  },
-                  {
-                    value: AnnouncementType.MAINTENANCE,
-                    label: t('announcements.types.maintenance'),
-                  },
-                  {
-                    value: AnnouncementType.EMERGENCY,
-                    label: t('announcements.types.emergency'),
-                  },
-                  {
-                    value: AnnouncementType.EVENT,
-                    label: t('announcements.types.event'),
-                  },
-                ]}
-                style={styles.segmentedButtons}
-              />
+              <>
+                <Pressable
+                  onPress={() => setTypeModalVisible(true)}
+                >
+                  <Surface style={[styles.field, styles.typeField]}>
+                    <Text variant="bodyLarge">{t(`announcements.types.${value.toLowerCase()}`)}</Text>
+                  </Surface>
+                </Pressable>
+
+                <Portal>
+                  <Modal
+                    visible={typeModalVisible}
+                    onDismiss={() => setTypeModalVisible(false)}
+                    transparent
+                  >
+                    <Pressable
+                      style={styles.modalOverlay}
+                      onPress={() => setTypeModalVisible(false)}
+                    >
+                      <View style={styles.modalContent}>
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                          <Text variant="headlineSmall" style={{ marginBottom: 16 }}>
+                            {t('announcements.type')}
+                          </Text>
+                          <RadioButton.Group
+                            onValueChange={(newValue) => {
+                              onChange(newValue);
+                              setTypeModalVisible(false);
+                            }}
+                            value={value}
+                          >
+                            <RadioButton.Item 
+                              label={t('announcements.types.general')} 
+                              value={AnnouncementType.GENERAL}
+                            />
+                            <RadioButton.Item 
+                              label={t('announcements.types.maintenance')} 
+                              value={AnnouncementType.MAINTENANCE}
+                            />
+                            <RadioButton.Item 
+                              label={t('announcements.types.emergency')} 
+                              value={AnnouncementType.EMERGENCY}
+                            />
+                            <RadioButton.Item 
+                              label={t('announcements.types.event')} 
+                              value={AnnouncementType.EVENT}
+                            />
+                          </RadioButton.Group>
+                        </ScrollView>
+                        <Button
+                          mode="text"
+                          onPress={() => setTypeModalVisible(false)}
+                          style={{ marginTop: 16 }}
+                        >
+                          {t('common.cancel')}
+                        </Button>
+                      </View>
+                    </Pressable>
+                  </Modal>
+                </Portal>
+              </>
             )}
           />
 
@@ -317,20 +587,31 @@ export const EditAnnouncementScreen: React.FC = () => {
           <Controller
             control={control}
             name="isPinned"
-            render={({ field: { value, onChange } }) => (
-              <View style={styles.checkboxContainer}>
-                <Checkbox
-                  status={value ? 'checked' : 'unchecked'}
-                  onPress={() => onChange(!value)}
-                />
-                <Text
-                  variant="bodyMedium"
-                  style={styles.checkboxLabel}
-                  onPress={() => onChange(!value)}
+            render={({ field }) => (
+              <Pressable
+                onPress={() => field.onChange(!field.value)}
+                disabled={loading}
+              >
+                <Surface
+                  style={[
+                    styles.checkboxBox,
+                    {
+                      borderColor: field.value ? theme.colors.primary : theme.colors.outline,
+                      borderWidth: 2,
+                      borderRadius: 8,
+                      backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
+                    },
+                  ]}
+                  elevation={0}
                 >
-                  {t('announcements.isPinned')}
-                </Text>
-              </View>
+                  <Checkbox
+                    status={field.value ? 'checked' : 'unchecked'}
+                    color={field.value ? theme.colors.primary : undefined}
+                    disabled={loading}
+                  />
+                  <Text style={styles.checkboxLabel}>{t('announcements.isPinned')}</Text>
+                </Surface>
+              </Pressable>
             )}
           />
 
@@ -435,12 +716,74 @@ export const EditAnnouncementScreen: React.FC = () => {
 
           {/* Metadata */}
           <View style={styles.metadata}>
-            <Text variant="labelSmall">
+            <Text variant="labelSmall" style={{ opacity: 0.6, fontSize: 11 }}>
               {t('announcements.createdAt')}: {new Date(announcement.createdAt).toLocaleDateString()}
             </Text>
-            <Text variant="labelSmall">
+            <Text variant="labelSmall" style={{ opacity: 0.6, fontSize: 11, marginTop: 4 }}>
               {t('announcements.updatedAt')}: {new Date(announcement.updatedAt).toLocaleDateString()}
             </Text>
+          </View>
+
+          {/* Existing Attachments */}
+          {existingAttachments.length > 0 && (
+            <View style={{ marginBottom: 16 }}>
+              <Text variant="labelLarge" style={styles.fieldLabel}>
+                {t('announcements.attachments')} - {existingAttachments.length}
+              </Text>
+              {existingAttachments.map((att) => (
+                <View key={att.id} style={[styles.field, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                  <Text variant="bodyMedium" numberOfLines={1} style={{ flex: 1 }}>
+                    {att.fileName}
+                  </Text>
+                  <IconButton
+                    icon="delete"
+                    size={20}
+                    iconColor={theme.colors.error}
+                    onPress={() => handleRemoveExistingAttachment(att.id)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* New Attachments */}
+          {attachments.length > 0 && (
+            <View style={{ marginBottom: 16 }}>
+              <Text variant="labelLarge" style={styles.fieldLabel}>
+                {t('announcements.newAttachments')} - {attachments.length}
+              </Text>
+              {attachments.map((att) => (
+                <View key={att.id} style={[styles.field, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+                  <Text variant="bodyMedium" numberOfLines={1} style={{ flex: 1 }}>
+                    {att.fileName}
+                  </Text>
+                  <IconButton
+                    icon="delete"
+                    size={20}
+                    iconColor={theme.colors.error}
+                    onPress={() => handleRemoveLocalAttachment(att.id)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Add Attachment Buttons */}
+          <View style={{ gap: 12 }}>
+            <TFButton
+              title={t('announcements.addImage')}
+              onPress={handlePickImage}
+              mode="outlined"
+              icon="image-plus"
+              style={styles.field}
+            />
+            <TFButton
+              title={t('announcements.addAttachment')}
+              onPress={handlePickDocument}
+              mode="outlined"
+              icon="plus"
+              style={styles.field}
+            />
           </View>
 
           {/* Save Button */}
@@ -472,55 +815,3 @@ export const EditAnnouncementScreen: React.FC = () => {
     </Screen>
   );
 };
-
-// ========== STYLES ==========
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    marginBottom: 24,
-  },
-  field: {
-    marginBottom: 8,
-  },
-  counter: {
-    marginBottom: 16,
-    opacity: 0.6,
-  },
-  fieldLabel: {
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  segmentedButtons: {
-    marginBottom: 24,
-  },
-  checkboxContainer: {
-    marginBottom: 24,
-    paddingVertical: 8,
-  },
-  checkboxLabel: {
-    paddingVertical: 8,
-  },
-  metadata: {
-    marginBottom: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 8,
-  },
-  submitButton: {
-    marginBottom: 12,
-  },
-  deleteButton: {
-    marginBottom: 12,
-  },
-});

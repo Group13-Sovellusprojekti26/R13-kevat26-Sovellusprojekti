@@ -58,7 +58,7 @@ submitReport: async (input) => {
   set({ loading: true, error: null, success: false });
 
   try {
-    await createFaultReport(input); // imageUris идут внутри input
+    await createFaultReport(input); // imageUris идын внутри input
     set({ loading: false, success: true });
     return true;
   } catch (error: any) {

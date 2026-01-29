@@ -36,6 +36,7 @@ export const ServiceCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('faults.detailTitle'),
+          headerBackTitle: t('faults.faultReports'),
         }}
       />
       <Stack.Screen
@@ -43,6 +44,8 @@ export const ServiceCompanyStack: React.FC = () => {
         component={SettingsScreen}
         options={{
           headerShown: true,
+          title: t('common.settings'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <Stack.Screen
@@ -51,6 +54,7 @@ export const ServiceCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('announcements.detailTitle'),
+          headerBackTitle: t('announcements.announcements'),
         }}
       />
     </Stack.Navigator>
