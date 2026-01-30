@@ -9,8 +9,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { HousingCompanyStackParamList } from './HousingCompanyStack';
 import { HousingCompanyDashboardScreen } from '@/features/housingCompany/views/HousingCompanyDashboardScreen';
 import { ManageFaultReportsScreen } from '@/features/housingCompany/views/ManageFaultReportsScreen';
-import { ManageAnnouncementsScreen } from '@/features/housingCompany/views/ManageAnnouncementsScreen';
+import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
 import { signOut } from '@/features/auth/services/auth.service';
+import { UserRole } from '@/data/models/enums';
 
 export type HousingCompanyTabsParamList = {
   Dashboard: undefined;
@@ -122,7 +123,6 @@ export const HousingCompanyTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageAnnouncements"
-        component={ManageAnnouncementsScreen}
         options={{
           title: t('housingCompany.dashboard.manageAnnouncements'),
           headerTitleAlign: 'left',
@@ -155,7 +155,9 @@ export const HousingCompanyTabs: React.FC = () => {
             );
           },
         }}
-      />
+      >
+        {() => <AnnouncementsScreen />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };

@@ -9,6 +9,9 @@ import { ResidentListScreen } from '@/features/housingCompany/views/ResidentList
 import { BuildingResidentsScreen } from '@/features/housingCompany/views/BuildingResidentsScreen';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
+import { CreateAnnouncementScreen } from '@/features/housingCompany/views/CreateAnnouncementScreen';
+import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
+import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 
 export type HousingCompanyStackParamList = {
   Tabs: undefined;
@@ -19,6 +22,9 @@ export type HousingCompanyStackParamList = {
   ResidentList: undefined;
   BuildingResidents: { buildingId: string };
   Settings: undefined;
+  CreateAnnouncement: undefined;
+  EditAnnouncement: { announcementId: string };
+  AnnouncementDetail: { announcementId: string };
 };
 
 const Stack = createNativeStackNavigator<HousingCompanyStackParamList>();
@@ -45,6 +51,7 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('faults.detailTitle'),
+          headerBackTitle: t('faults.faultReports'),
         }}
       />
       <Stack.Screen 
@@ -53,6 +60,7 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('housingCompany.residents.createInviteCode'),
+          headerBackTitle: t('housingCompany.residents.residentList'),
         }}
       />
       <Stack.Screen 
@@ -61,6 +69,7 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('housingCompany.management.createInviteCode'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <Stack.Screen 
@@ -69,6 +78,7 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('housingCompany.serviceCompany.createInviteCode'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <Stack.Screen 
@@ -77,6 +87,7 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('housingCompany.residents.residentList'),
+          headerBackTitle: t('common.back'),
         }}
       />
       <Stack.Screen 
@@ -85,6 +96,7 @@ export const HousingCompanyStack: React.FC = () => {
         options={({ route }) => ({
           headerShown: true,
           title: t('housingCompany.residents.buildingNumber', { number: route.params.buildingId }),
+          headerBackTitle: t('housingCompany.residents.residentList'),
         })}
       />
       <Stack.Screen 
@@ -93,6 +105,34 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('common.settings'),
+          headerBackTitle: t('common.back'),
+        }}
+      />
+      <Stack.Screen 
+        name="CreateAnnouncement" 
+        component={CreateAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.createTitle'),
+          headerBackTitle: t('announcements.announcements'),
+        }}
+      />
+      <Stack.Screen 
+        name="EditAnnouncement" 
+        component={EditAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.editTitle'),
+          headerBackTitle: t('announcements.detailTitle'),
+        }}
+      />
+      <Stack.Screen 
+        name="AnnouncementDetail" 
+        component={AnnouncementDetailScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.detailTitle'),
+          headerBackTitle: t('announcements.announcements'),
         }}
       />
     </Stack.Navigator>

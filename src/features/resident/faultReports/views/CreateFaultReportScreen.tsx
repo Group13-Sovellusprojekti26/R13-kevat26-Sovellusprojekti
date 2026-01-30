@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable, Alert } from 'react-native';
-import { Checkbox, Text, SegmentedButtons, useTheme } from 'react-native-paper';
+import { Checkbox, Text, SegmentedButtons, useTheme, Surface } from 'react-native-paper';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -447,30 +447,64 @@ export const CreateFaultReportScreen: React.FC = () => {
           />
         </View>
 
-        <View style={styles.additionalInfoSection}>
-          <Text style={styles.label}>{t('faults.additionalInfoTitle')}</Text>
+        <View style={[styles.additionalInfoSection, { backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, paddingHorizontal: 8 }]}>
+          <Text style={[styles.label, { marginHorizontal: 8, marginTop: 8, marginBottom: 8 }]}>{t('faults.additionalInfoTitle')}</Text>
           <Controller
             control={control}
             name="allowMasterKeyAccess"
             render={({ field }) => (
-              <Checkbox.Item
-                label={t('faults.allowMasterKeyAccess')}
-                status={field.value ? 'checked' : 'unchecked'}
+              <Pressable
                 onPress={() => field.onChange(!field.value)}
                 disabled={loading || !isEditable}
-              />
+              >
+                <Surface
+                  style={[
+                    styles.checkboxBox,
+                    {
+                      borderColor: field.value ? theme.colors.primary : theme.colors.outline,
+                      borderWidth: 2,
+                      backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
+                    },
+                  ]}
+                  elevation={0}
+                >
+                  <Checkbox
+                    status={field.value ? 'checked' : 'unchecked'}
+                    color={field.value ? theme.colors.primary : undefined}
+                    disabled={loading || !isEditable}
+                  />
+                  <Text style={styles.checkboxLabel}>{t('faults.allowMasterKeyAccess')}</Text>
+                </Surface>
+              </Pressable>
             )}
           />
           <Controller
             control={control}
             name="hasPets"
             render={({ field }) => (
-              <Checkbox.Item
-                label={t('faults.hasPets')}
-                status={field.value ? 'checked' : 'unchecked'}
+              <Pressable
                 onPress={() => field.onChange(!field.value)}
                 disabled={loading || !isEditable}
-              />
+              >
+                <Surface
+                  style={[
+                    styles.checkboxBox,
+                    {
+                      borderColor: field.value ? theme.colors.primary : theme.colors.outline,
+                      borderWidth: 2,
+                      backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
+                    },
+                  ]}
+                  elevation={0}
+                >
+                  <Checkbox
+                    status={field.value ? 'checked' : 'unchecked'}
+                    color={field.value ? theme.colors.primary : undefined}
+                    disabled={loading || !isEditable}
+                  />
+                  <Text style={styles.checkboxLabel}>{t('faults.hasPets')}</Text>
+                </Surface>
+              </Pressable>
             )}
           />
         </View>
@@ -597,8 +631,33 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   additionalInfoSection: {
-    marginTop: 4,
+    marginTop: 12,
+    marginBottom: 16,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  checkboxBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
     marginBottom: 8,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  checkboxRowPressed: {
+    opacity: 0.7,
+  },
+  checkboxLabel: {
+    marginLeft: 8,
+    flex: 1,
   },
   imageContainer: {
     marginRight: 8,

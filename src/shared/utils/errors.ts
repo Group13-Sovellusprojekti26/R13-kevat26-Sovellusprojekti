@@ -20,7 +20,7 @@ export function parseFirebaseError(error: unknown): string {
     return error.message;
   }
 
-  const firebaseError = error as { code?: string; message?: string };
+  const firebaseError = error as any;
   const errorCode = firebaseError?.code || '';
   
   switch (errorCode) {
@@ -42,6 +42,18 @@ export function parseFirebaseError(error: unknown): string {
       return 'You do not have permission to perform this action';
     case 'not-found':
       return 'The requested resource was not found';
+    case 'functions/unauthenticated':
+      return 'You are not authenticated';
+    case 'functions/permission-denied':
+      return 'You do not have permission to perform this action';
+    case 'functions/invalid-argument':
+      return 'Invalid arguments provided';
+    case 'functions/not-found':
+      return 'The requested resource was not found';
+    case 'functions/aborted':
+      return 'Operation was aborted';
+    case 'functions/internal':
+      return 'Internal server error occurred';
     default:
       return firebaseError?.message || 'An unexpected error occurred';
   }
