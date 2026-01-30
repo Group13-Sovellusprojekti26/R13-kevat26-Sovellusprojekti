@@ -45,7 +45,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['buildingId', 'title', 'description', 'status', 'createdBy', 'housingCompanyId', 'createdAt', 'updatedAt']);
       
       // Update: users can update their own report details only
-      // Allow ONLY description + imageUrls when status is created/open
+      // Allow ONLY description, imageUrls, allowMasterKeyAccess, hasPets when status is created/open
       // Block status/timestamp/comment updates from client
       allow update: if isAuthenticated()
         && resource.data.createdBy == request.auth.uid
@@ -54,7 +54,9 @@ service cloud.firestore {
         && request.resource.data.status == resource.data.status
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'description',
-          'imageUrls'
+          'imageUrls',
+          'allowMasterKeyAccess',
+          'hasPets'
         ])
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'status',
@@ -95,14 +97,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() 
         && resource.data.housingCompanyId == getUserHousingCompanyId();
       
-      // Create: ONLY through Cloud Functions (admin)
-      allow create: if false;
-      
-      // Update: ONLY through Cloud Functions (admin)
-      allow update: if false;
-      
-      // Delete: ONLY through Cloud Functions (admin)
-      allow delete: if false;
+      // Create & Update & Delete: ONLY through Cloud Functions
+      allow create, update, delete: if false;
     }
     
     // ========== USER PROFILES ==========

@@ -227,9 +227,9 @@ export async function updateFaultReportDetails(
     hasPets?: boolean;
   }
 ): Promise<string[]> {
-  const updates: Record<string, unknown> = {
-    updatedAt: serverTimestamp(),
-  };
+  // Don't include updatedAt in client-side updates - let Security Rules handle it via server timestamp
+  // This avoids permission issues when asukkaat update their own reports
+  const updates: Record<string, unknown> = {};
 
   if (typeof params.description === 'string') {
     updates.description = params.description;
@@ -254,10 +254,13 @@ export async function updateFaultReportDetails(
     updates.imageUrls = nextImageUrls;
   }
 
-  if (Object.keys(updates).length > 1) {
+  if (Object.keys(updates).length > 0) {
     const updatePayload = updates;
-    console.log('Fault report update payload:', updatePayload);
-    await updateDoc(doc(db, 'faultReports', id), updatePayload);
+    try {
+      await updateDoc(doc(db, 'faultReports', id), updatePayload);
+    } catch (error) {
+      throw error;
+    }
   }
 
   return nextImageUrls;

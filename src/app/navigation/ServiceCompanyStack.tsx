@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { ServiceCompanyTabs } from './ServiceCompanyTabs';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
+import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 
 export type ServiceCompanyStackParamList = {
   Tabs: undefined;
   FaultReportDetails: { faultReportId: string };
   Settings: undefined;
+  AnnouncementDetail: { announcementId: string };
 };
 
 const Stack = createNativeStackNavigator<ServiceCompanyStackParamList>();
@@ -34,6 +36,7 @@ export const ServiceCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('faults.detailTitle'),
+          headerBackTitle: t('faults.faultReports'),
         }}
       />
       <Stack.Screen
@@ -41,6 +44,17 @@ export const ServiceCompanyStack: React.FC = () => {
         component={SettingsScreen}
         options={{
           headerShown: true,
+          title: t('common.settings'),
+          headerBackTitle: t('common.back'),
+        }}
+      />
+      <Stack.Screen
+        name="AnnouncementDetail"
+        component={AnnouncementDetailScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.detailTitle'),
+          headerBackTitle: t('announcements.announcements'),
         }}
       />
     </Stack.Navigator>

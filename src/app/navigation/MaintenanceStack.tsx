@@ -4,11 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { MaintenanceTabs } from './MaintenanceTabs';
 import { SettingsScreen } from '@/features/settings/views/SettingsScreen';
 import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetailsScreen';
+import { CreateAnnouncementScreen } from '@/features/housingCompany/views/CreateAnnouncementScreen';
+import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
+import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 
 export type MaintenanceStackParamList = {
   Tabs: undefined;
   FaultReportDetails: { faultReportId: string };
   Settings: undefined;
+  CreateAnnouncement: undefined;
+  EditAnnouncement: { announcementId: string };
+  AnnouncementDetail: { announcementId: string };
 };
 
 const Stack = createNativeStackNavigator<MaintenanceStackParamList>();
@@ -34,6 +40,7 @@ export const MaintenanceStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('faults.detailTitle'),
+          headerBackTitle: t('faults.faultReports'),
         }}
       />
       <Stack.Screen 
@@ -41,6 +48,35 @@ export const MaintenanceStack: React.FC = () => {
         component={SettingsScreen}
         options={{
           headerShown: true,
+          title: t('common.settings'),
+          headerBackTitle: t('common.back'),
+        }}
+      />
+      <Stack.Screen 
+        name="CreateAnnouncement" 
+        component={CreateAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.createTitle'),
+          headerBackTitle: t('announcements.announcements'),
+        }}
+      />
+      <Stack.Screen 
+        name="EditAnnouncement" 
+        component={EditAnnouncementScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.editTitle'),
+          headerBackTitle: t('announcements.detailTitle'),
+        }}
+      />
+      <Stack.Screen 
+        name="AnnouncementDetail" 
+        component={AnnouncementDetailScreen}
+        options={{
+          headerShown: true,
+          title: t('announcements.detailTitle'),
+          headerBackTitle: t('announcements.announcements'),
         }}
       />
     </Stack.Navigator>

@@ -18,7 +18,8 @@ const firebaseConfig = {
 
 const app: FirebaseApp = initializeApp(firebaseConfig);
 
-// Initialize Auth (React Native persistence is handled automatically by Firebase)
+// Initialize Auth - use default persistence (works in React Native)
+// AsyncStorage persistence causes token propagation issues with httpsCallable
 export const auth: Auth = getAuth(app);
 
 export const db: Firestore = getFirestore(app);

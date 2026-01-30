@@ -9,8 +9,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MaintenanceStackParamList } from './MaintenanceStack';
 import { MaintenanceDashboardScreen } from '@/features/maintenance/views/MaintenanceDashboardScreen';
 import { ManageFaultReportsScreen } from '@/features/maintenance/views/ManageFaultReportsScreen';
-import { ManageAnnouncementsScreen } from '@/features/maintenance/views/ManageAnnouncementsScreen';
+import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
 import { signOut } from '@/features/auth/services/auth.service';
+import { getUserProfile } from '@/data/repositories/users.repo';
+import { UserRole } from '@/data/models/enums';
 
 export type MaintenanceTabsParamList = {
   Dashboard: undefined;
@@ -21,10 +23,25 @@ export type MaintenanceTabsParamList = {
 const Tab = createBottomTabNavigator<MaintenanceTabsParamList>();
 
 /**
- * Bottom tab navigation for maintenance users
+ * Bottom tab navigation for maintenance and property manager users
  */
 export const MaintenanceTabs: React.FC = () => {
   const { t } = useTranslation();
+  const [userRole, setUserRole] = React.useState<UserRole | null>(null);
+
+  React.useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const profile = await getUserProfile();
+        if (profile) {
+          setUserRole(profile.role);
+        }
+      } catch (error) {
+        console.error('Failed to load user profile:', error);
+      }
+    };
+    loadUserRole();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert(
@@ -122,7 +139,6 @@ export const MaintenanceTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageAnnouncements"
-        component={ManageAnnouncementsScreen}
         options={{
           title: t('maintenance.dashboard.manageAnnouncements'),
           headerTitleAlign: 'left',
@@ -155,7 +171,9 @@ export const MaintenanceTabs: React.FC = () => {
             );
           },
         }}
-      />
+      >
+        {() => <AnnouncementsScreen />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };
