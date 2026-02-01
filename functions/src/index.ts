@@ -31,6 +31,29 @@ type UserProfile = {
 };
 
 /**
+ * ANNOUNCEMENT PERMISSIONS CONFIGURATION FOR CLOUD FUNCTIONS
+ * 
+ * IMPORTANT: This list must match FULL_ACCESS_ANNOUNCEMENT_ROLES in:
+ * src/shared/types/announcementPermissions.ts
+ * 
+ * If you add/remove roles, update BOTH locations:
+ * 1. src/shared/types/announcementPermissions.ts - Update ANNOUNCEMENT_ROLES_CONFIG and FULL_ACCESS_ANNOUNCEMENT_ROLES
+ * 2. This list below - Keep it in sync
+ * 
+ * Roles that have full announcement management capabilities (CRUD):
+ * - admin
+ * - housing_company
+ * - property_manager
+ * - maintenance
+ */
+const FULL_ACCESS_ANNOUNCEMENT_ROLES = [
+  'admin',
+  'housing_company',
+  'property_manager',
+  'maintenance',
+];
+
+/**
  * Asserts that the request is authenticated and returns the user ID.
  * @param {CallableRequest} request - The callable request object
  * @return {string} The authenticated user ID
@@ -127,7 +150,8 @@ export const uploadFaultReportImage = onCall(
   {region: "europe-west1", maxInstances: 10},
   async (request) => {
     const uid = assertAuth(request);
-    const {housingCompanyId} = await getUserProfile(uid);
+    const userProfile = await getUserProfile(uid);
+    const {housingCompanyId, role} = userProfile;
 
     const {faultReportId, imageBase64, contentType, imageIndex} =
       request.data || {};
@@ -157,8 +181,13 @@ export const uploadFaultReportImage = onCall(
       );
     }
 
-    // Verify the user created this report (residents can only upload to own)
-    if (reportData?.createdBy !== uid) {
+    // Permission check: residents can only upload to own reports
+    // Admins and property managers can upload to any report in their housing company
+    const isAdmin = role === "admin";
+    const isPropertyManager = role === "property_manager" || role === "maintenance";
+    const isOwnReport = reportData?.createdBy === uid;
+
+    if (!isAdmin && !isPropertyManager && !isOwnReport) {
       throw new HttpsError(
         "permission-denied",
         "You can only upload images to your own fault reports."
@@ -423,7 +452,7 @@ export const publishAnnouncement = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
+    assertAllowedRole(role, FULL_ACCESS_ANNOUNCEMENT_ROLES as UserRole[]);
 
     // Get user's first and last name
     const {firstName, lastName} = await getUserNameFromProfile(uid);
@@ -540,7 +569,7 @@ export const updateAnnouncement = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
+    assertAllowedRole(role, FULL_ACCESS_ANNOUNCEMENT_ROLES as UserRole[]);
 
     const {announcementId, updates} = request.data || {};
     if (typeof announcementId !== "string") {
@@ -656,7 +685,7 @@ export const deleteAnnouncement = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
+    assertAllowedRole(role, FULL_ACCESS_ANNOUNCEMENT_ROLES as UserRole[]);
 
     const {announcementId} = request.data || {};
     if (typeof announcementId !== "string") {
@@ -820,7 +849,7 @@ export const updateAnnouncementWithAttachments = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
+    assertAllowedRole(role, FULL_ACCESS_ANNOUNCEMENT_ROLES as UserRole[]);
 
     const {announcementId, attachmentIds, removeAttachmentIds} = request.data || {};
 
@@ -977,7 +1006,7 @@ export const deleteAnnouncementAttachmentFile = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, ["admin", "housing_company", "property_manager", "maintenance"]);
+    assertAllowedRole(role, FULL_ACCESS_ANNOUNCEMENT_ROLES as UserRole[]);
 
     const {attachmentId} = request.data || {};
     if (typeof attachmentId !== "string") {

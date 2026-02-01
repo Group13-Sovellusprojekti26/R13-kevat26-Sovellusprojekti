@@ -1,18 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Alert, Linking, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, Linking, TouchableOpacity } from 'react-native';
 import { Text, useTheme, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import i18n from '@/app/i18n/i18n';
 
 import { Screen } from '@/shared/components/Screen';
-import { formatAnnouncementDate } from '@/shared/utils/dateFormatter';
+import { LoadingState } from '@/shared/components/LoadingState';
+import { getAnnouncementPermissions } from '@/shared/types/announcementPermissions';
+import { useUserProfile } from '../hooks/useUserProfile';
 import type { HousingCompanyStackParamList } from '@/app/navigation/HousingCompanyStack';
 import { Announcement } from '@/data/models/Announcement';
 import { getAnnouncement, deleteAnnouncement } from '@/data/repositories/announcements.repo';
 import { haptic } from '@/shared/utils/haptics';
 import { announcementDetailStyles as styles } from '../styles/announcements.styles';
+import { showDeleteAnnouncementConfirm } from '../utils/announcement.utils';
+import { useAnnouncementLocale } from '../hooks/useAnnouncementLocale';
+import { AnnouncementPublisherInfo } from './components/AnnouncementPublisherInfo';
+import { AnnouncementDateRange } from './components/AnnouncementDateRange';
+import { AnnouncementAttachments } from './components/AnnouncementAttachments';
 
 type AnnouncementDetailScreenRouteProp = RouteProp<
   HousingCompanyStackParamList,
@@ -60,12 +66,13 @@ export const AnnouncementDetailScreen: React.FC = () => {
   const [announcement, setAnnouncement] = React.useState<Announcement | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const { profile } = useUserProfile();
 
-  // Memoize locale to avoid recalculation on every render
-  const locale = useMemo(
-    () => i18n.language === 'fi' ? 'fi-FI' : 'en-US',
-    [i18n.language]
-  );
+  // Get locale from custom hook
+  const locale = useAnnouncementLocale();
+
+  // Get permissions based on user role
+  const permissions = profile ? getAnnouncementPermissions(profile.role) : null;
 
   // Fetch announcement details
   useEffect(() => {
@@ -94,60 +101,40 @@ export const AnnouncementDetailScreen: React.FC = () => {
   };
 
   const handleDeletePress = () => {
-    Alert.alert(
-      t('announcements.deleteTitle'),
-      t('announcements.deleteConfirm'),
-      [
-        { text: t('common.cancel'), onPress: () => {}, style: 'cancel' },
-        {
-          text: t('common.delete'),
-          onPress: async () => {
-            haptic.medium();
-            try {
-              await deleteAnnouncement(announcement!.id);
-              haptic.success();
-              navigation.goBack();
-            } catch (err) {
-              Alert.alert(t('common.error'), t('announcements.deleteFailed'));
-            }
-          },
-          style: 'destructive',
-        },
-      ]
-    );
+    showDeleteAnnouncementConfirm(t, async () => {
+      haptic.medium();
+      try {
+        await deleteAnnouncement(announcement!.id);
+        haptic.success();
+        navigation.goBack();
+      } catch (err) {
+        haptic.error();
+        // Error handling is in the shared function
+      }
+    });
   };
 
   if (loading) {
     return (
-      <Screen>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" />
-        </View>
-      </Screen>
+      <LoadingState
+        isLoading={true}
+        error={null}
+      >
+        <></>
+      </LoadingState>
     );
   }
 
   if (error || !announcement) {
     return (
-      <Screen>
-        <View style={styles.centerContainer}>
-          <Text variant="titleMedium">{error || t('announcements.notFound')}</Text>
-        </View>
-      </Screen>
+      <LoadingState
+        isLoading={false}
+        error={error || t('announcements.notFound')}
+      >
+        <></>
+      </LoadingState>
     );
   }
-
-  const createdDate = formatAnnouncementDate(announcement.createdAt, locale);
-  const updatedDate = formatAnnouncementDate(announcement.updatedAt, locale);
-  const startDate = announcement.startDate ? formatAnnouncementDate(announcement.startDate, locale) : null;
-  const endDate = formatAnnouncementDate(announcement.endDate, locale);
-
-  console.log('AnnouncementDetailScreen - announcement data:', {
-    id: announcement.id,
-    hasAttachments: !!announcement.attachments,
-    attachmentsCount: announcement.attachments?.length || 0,
-    attachments: announcement.attachments,
-  });
 
   return (
     <Screen scrollable safeAreaEdges={['left', 'right', 'bottom']}>
@@ -167,20 +154,26 @@ export const AnnouncementDetailScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Action buttons */}
-          <View style={styles.actionButtons}>
-            <IconButton
-              icon="pencil"
-              size={20}
-              onPress={handleEditPress}
-            />
-            <IconButton
-              icon="delete"
-              size={20}
-              iconColor={theme.colors.error}
-              onPress={handleDeletePress}
-            />
-          </View>
+          {/* Action buttons - only show if user has edit/delete permissions */}
+          {permissions && (permissions.canEdit || permissions.canDelete) && (
+            <View style={styles.actionButtons}>
+              {permissions.canEdit && (
+                <IconButton
+                  icon="pencil"
+                  size={20}
+                  onPress={handleEditPress}
+                />
+              )}
+              {permissions.canDelete && (
+                <IconButton
+                  icon="delete"
+                  size={20}
+                  iconColor={theme.colors.error}
+                  onPress={handleDeletePress}
+                />
+              )}
+            </View>
+          )}
         </View>
 
         {/* Type badge */}
@@ -195,83 +188,16 @@ export const AnnouncementDetailScreen: React.FC = () => {
         </Text>
 
         {/* Metadata section */}
-        <View style={[styles.metadataSection, { backgroundColor: theme.colors.surfaceVariant }]}>
-          <View style={styles.metadataRow}>
-            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              {t('announcements.createdBy')}
-            </Text>
-            <Text variant="bodyMedium" style={{ fontWeight: '500' }}>
-              {announcement.authorName}
-            </Text>
-          </View>
-          <View style={styles.metadataRow}>
-            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-              {t('announcements.createdAt')}
-            </Text>
-            <Text variant="bodySmall" style={{ fontWeight: '500' }}>
-              {createdDate}
-            </Text>
-          </View>
-          
-          {/* Show updated info if announcement was edited */}
-          {announcement.updatedByName && announcement.authorName !== announcement.updatedByName && (
-            <>
-              <View style={styles.metadataRow}>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t('announcements.lastModifiedBy')}
-                </Text>
-                <Text variant="bodyMedium" style={{ fontWeight: '500' }}>
-                  {announcement.updatedByName}
-                </Text>
-              </View>
-              <View style={styles.metadataRow}>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t('announcements.lastModifiedAt')}
-                </Text>
-                <Text variant="bodySmall" style={{ fontWeight: '500' }}>
-                  {updatedDate}
-                </Text>
-              </View>
-            </>
-          )}
-        </View>
+        <AnnouncementPublisherInfo
+          announcement={announcement}
+          locale={locale}
+        />
 
         {/* Date range section - only show if start or end date exists */}
-        {(startDate || endDate) && (
-          <View style={[styles.dateSection, { backgroundColor: theme.colors.elevation.level2 }]}>
-            {startDate && (
-              <View style={styles.dateColumn}>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t('announcements.startDate')}
-                </Text>
-                <Text variant="bodyMedium" style={{ fontWeight: '500', marginTop: 4 }}>
-                  {startDate}
-                </Text>
-                {announcement.startTime && (
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {announcement.startTime}
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {endDate && (
-              <View style={styles.dateColumn}>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t('announcements.endDate')}
-                </Text>
-                <Text variant="bodyMedium" style={{ fontWeight: '500', marginTop: 4 }}>
-                  {endDate}
-                </Text>
-                {announcement.endTime && (
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {announcement.endTime}
-                  </Text>
-                )}
-              </View>
-            )}
-          </View>
-        )}
+        <AnnouncementDateRange
+          announcement={announcement}
+          locale={locale}
+        />
 
         {/* Full content */}
         <View style={styles.contentSection}>
@@ -280,48 +206,11 @@ export const AnnouncementDetailScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Attachments section */}
-        {announcement.attachments && announcement.attachments.length > 0 && (
-          <View style={[styles.attachmentsSection, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Text variant="titleSmall" style={{ marginBottom: 12 }}>
-              📎 {t('announcements.attachments')} ({announcement.attachments.length})
-            </Text>
-            {announcement.attachments.map((attachment: any, index: number) => {
-              console.log('Rendering attachment:', { index, attachment });
-              return (
-                <TouchableOpacity
-                  key={`${attachment.id}-${index}`}
-                  onPress={() => {
-                    if (attachment.downloadUrl) {
-                      Linking.openURL(attachment.downloadUrl);
-                    }
-                  }}
-                  style={[
-                    styles.attachmentItem,
-                    { backgroundColor: theme.colors.surface },
-                  ]}
-                >
-                  <View style={styles.attachmentInfo}>
-                    <Text variant="bodyMedium" style={{ fontWeight: '500' }} numberOfLines={1}>
-                      {attachment.fileName}
-                    </Text>
-                    {attachment.uploadedAt && (
-                      <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}>
-                        {formatAnnouncementDate(
-                          attachment.uploadedAt instanceof Date ? attachment.uploadedAt : new Date(attachment.uploadedAt),
-                          locale
-                        )}
-                      </Text>
-                    )}
-                  </View>
-                  <Text variant="labelMedium" style={{ color: theme.colors.primary }}>
-                    ↓
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+        {/* Attachments */}
+        <AnnouncementAttachments
+          announcement={announcement}
+          locale={locale}
+        />
     </Screen>
   );
 }

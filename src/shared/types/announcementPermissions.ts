@@ -1,3 +1,132 @@
+import type { UserRole } from '@/data/models/enums';
+
+/**
+ * CENTRALIZED ROLE-BASED ANNOUNCEMENT PERMISSIONS CONFIGURATION
+ * 
+ * This is the single source of truth for all announcement permission logic.
+ * Used by:
+ * - UI layer (AnnouncementPermissions) for conditional rendering
+ * - Cloud Functions for role-based access control
+ * - All announcement-related permission checks
+ * 
+ * IMPORTANT: If new roles are introduced, update ANNOUNCEMENT_ROLES_CONFIG.
+ * Cloud Functions must also be updated to use the new roles in:
+ * - functions/src/index.ts - publishAnnouncement, updateAnnouncement, deleteAnnouncement, etc.
+ * 
+ * Keep the roles list in sync with: FULL_ACCESS_ANNOUNCEMENT_ROLES constant below
+ */
+
+/**
+ * Role permission levels for announcements.
+ * Determines what actions a user with a given role can perform on announcements.
+ */
+export interface AnnouncementRoleConfig {
+  canView: boolean;
+  canViewExpired: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
+/**
+ * Complete announcement role configuration.
+ * Maps each role to its permission level.
+ * 
+ * Role hierarchy:
+ * - ADMIN, HOUSING_COMPANY, PROPERTY_MANAGER, MAINTENANCE: Full access (CRUD)
+ * - SERVICE_COMPANY, RESIDENT: Read-only access
+ * 
+ * Update this when:
+ * - A new role is introduced to the system
+ * - Permission levels for existing roles change
+ * - IMPORTANT: Also update FULL_ACCESS_ANNOUNCEMENT_ROLES constant below
+ */
+export const ANNOUNCEMENT_ROLES_CONFIG: Record<string, AnnouncementRoleConfig> = {
+  // Full access roles - can create, read, edit, delete announcements
+  admin: {
+    canView: true,
+    canViewExpired: true,
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+  },
+  housing_company: {
+    canView: true,
+    canViewExpired: true,
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+  },
+  property_manager: {
+    canView: true,
+    canViewExpired: true,
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+  },
+  maintenance: {
+    canView: true,
+    canViewExpired: true,
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+  },
+
+  // Read-only access roles - can only view announcements
+  resident: {
+    canView: true,
+    canViewExpired: true,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+  },
+  service_company: {
+    canView: true,
+    canViewExpired: true,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+  },
+};
+
+/**
+ * Roles that have full announcement management capabilities (CRUD).
+ * Used by Cloud Functions for efficient role validation.
+ * 
+ * IMPORTANT: Must match the roles with full permissions in ANNOUNCEMENT_ROLES_CONFIG.
+ * Keep this in sync when updating ANNOUNCEMENT_ROLES_CONFIG.
+ * 
+ * Used in Cloud Functions:
+ * - functions/src/index.ts: assertAllowedRole(role, FULL_ACCESS_ANNOUNCEMENT_ROLES)
+ */
+export const FULL_ACCESS_ANNOUNCEMENT_ROLES = [
+  'admin',
+  'housing_company',
+  'property_manager',
+  'maintenance',
+];
+
+/**
+ * Gets the announcement permission config for a role.
+ * Returns read-only default if role is not found.
+ * 
+ * @param {string} role - User role
+ * @returns {AnnouncementRoleConfig} Permission configuration for the role
+ * 
+ * @example
+ * const config = getRoleAnnouncementConfig('admin');
+ * console.log(config.canDelete); // true
+ */
+export const getRoleAnnouncementConfig = (role: string): AnnouncementRoleConfig => {
+  return ANNOUNCEMENT_ROLES_CONFIG[role] ?? {
+    canView: false,
+    canViewExpired: false,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+  };
+};
+
 /**
  * Announcement permissions model defining role-based access controls.
  * Specifies which actions and UI elements are available to a user based on their role.
@@ -30,68 +159,39 @@ export interface AnnouncementPermissions {
 }
 
 /**
- * Creates a read-only permission set for roles that can view but not modify announcements.
- * Applied to RESIDENT and SERVICE_COMPANY roles.
- * Allows viewing expired announcements and toggling between active/expired views.
- * No create, edit, or delete capabilities.
+ * Maps role config to UI permission object.
+ * Determines which UI elements should be shown based on role permissions.
  * 
- * @function createReadOnlyPermissions
- * @returns {AnnouncementPermissions} Permission object with read-only capabilities
- * 
- * @example
- * const permissions = createReadOnlyPermissions();
- * console.log(permissions.canCreate); // false
- * console.log(permissions.showExpiredToggle); // true
+ * @param {boolean} canCreate - Whether role can create announcements
+ * @param {boolean} canEdit - Whether role can edit announcements
+ * @param {boolean} canDelete - Whether role can delete announcements
+ * @returns {AnnouncementPermissions} Complete permission set for UI
  */
-const createReadOnlyPermissions = (): AnnouncementPermissions => ({
-  canView: true,
-  canViewExpired: true,
-  canCreate: false,
-  canEdit: false,
-  canDelete: false,
-  showCreateButton: false,
-  showExpiredToggle: true,
-  showEditDeleteActions: false,
-});
-
-/**
- * Creates a full permission set for roles with complete announcement management capabilities.
- * Applied to ADMIN, MAINTENANCE, PROPERTY_MANAGER, and HOUSING_COMPANY roles.
- * Allows viewing, creating, editing, deleting announcements and viewing expired announcements.
- * Shows all UI elements including create button and edit/delete actions on cards.
- * 
- * @function createFullPermissions
- * @returns {AnnouncementPermissions} Permission object with full CRUD capabilities
- * 
- * @example
- * const permissions = createFullPermissions();
- * console.log(permissions.canEdit); // true
- * console.log(permissions.showCreateButton); // true
- */
-const createFullPermissions = (): AnnouncementPermissions => ({
-  canView: true,
-  canViewExpired: true,
-  canCreate: true,
-  canEdit: true,
-  canDelete: true,
-  showCreateButton: true,
-  showExpiredToggle: true,
-  showEditDeleteActions: true,
+const mapRoleConfigToPermissions = (
+  canView: boolean,
+  canViewExpired: boolean,
+  canCreate: boolean,
+  canEdit: boolean,
+  canDelete: boolean
+): AnnouncementPermissions => ({
+  canView,
+  canViewExpired,
+  canCreate,
+  canEdit,
+  canDelete,
+  // Show create button if user has create permission
+  showCreateButton: canCreate,
+  // Show expired toggle if user can view announcements
+  showExpiredToggle: canView,
+  // Show edit/delete actions if user has either permission
+  showEditDeleteActions: canEdit || canDelete,
 });
 
 /**
  * Determines announcement permissions for a given user role.
  * Accepts both UserRole enum values and string role names.
- * Uses .valueOf() to extract string value from enum for consistent comparison.
+ * Uses centralized role configuration from ANNOUNCEMENT_ROLES_CONFIG.
  * Returns read-only permissions as default for unknown roles.
- * 
- * Role mappings:
- * - RESIDENT ('resident'): Read-only with expired toggle
- * - SERVICE_COMPANY ('service_company'): Read-only with expired toggle
- * - MAINTENANCE ('maintenance'): Full CRUD
- * - PROPERTY_MANAGER ('property_manager'): Full CRUD
- * - HOUSING_COMPANY ('housing_company'): Full CRUD
- * - ADMIN ('admin'): Full CRUD
  * 
  * @function getAnnouncementPermissions
  * @param {UserRole | string} role - User role (UserRole enum or string value)
@@ -107,21 +207,19 @@ const createFullPermissions = (): AnnouncementPermissions => ({
  * // Both return identical full permissions
  */
 export const getAnnouncementPermissions = (
-  role: UserRole | 'resident' | 'admin' | 'maintenance' | 'property_manager' | 'housing_company' | 'service_company'
+  role: UserRole | string
 ): AnnouncementPermissions => {
   // Convert to string value - handles both enum and string inputs
-  const roleStr = typeof role === 'string' ? role : role.valueOf();
+  const roleStr = typeof role === 'string' ? role : String(role);
   
-  switch (roleStr) {
-    case 'resident':
-    case 'service_company':
-      return createReadOnlyPermissions();
-    case 'maintenance':
-    case 'property_manager':
-    case 'housing_company':
-    case 'admin':
-      return createFullPermissions();
-    default:
-      return createReadOnlyPermissions();
-  }
+  // Get role config from centralized configuration
+  const config = getRoleAnnouncementConfig(roleStr);
+  
+  return mapRoleConfigToPermissions(
+    config.canView,
+    config.canViewExpired,
+    config.canCreate,
+    config.canEdit,
+    config.canDelete
+  );
 };

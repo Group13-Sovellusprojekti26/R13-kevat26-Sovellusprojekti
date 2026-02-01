@@ -6,15 +6,12 @@ import {
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
-  uploadAnnouncementAttachment,
-  updateAnnouncementWithAttachments,
-  deleteAnnouncementAttachmentFile,
 } from '@/data/repositories/announcements.repo';
 import { getUserProfile } from '@/data/repositories/users.repo';
-import { getCurrentUser } from '@/features/auth/services/auth.service';
 import { Announcement, CreateAnnouncementInput } from '@/data/models/Announcement';
 import { AnnouncementType } from '@/data/models/enums';
 import { AppError } from '@/shared/utils/errors';
+import { useAnnouncementAttachments } from '../hooks/useAnnouncementAttachments';
 import type { UploadAttachmentParams, UploadAttachmentResponse } from '@/shared/types/announcementAttachments.types';
 
 /**
@@ -222,45 +219,33 @@ interface AnnouncementsState {
    * }
    */
   clearError: () => void;
+
   /**
    * Upload an attachment file for an announcement.
-   * Handles file upload to Cloud Storage via Cloud Function.
-   * Returns attachment ID for use in createAnnouncement or updateAnnouncementWithAttachments.
+   * Delegates to useAnnouncementAttachments hook.
    * 
    * @async
-   * @param {UploadAttachmentParams} params - File parameters (fileName, size, mimeType, base64)
-   * @returns {Promise<UploadAttachmentResponse>} Upload response with attachmentId and downloadUrl
-   * @throws {AppError} If upload fails due to size limit, file type, or permission errors
-   * 
-   * @example
-   * const vm = useAnnouncementsVM();
-   * const response = await vm.uploadAttachment({
-   *   fileName: 'document.pdf',
-   *   size: 2048000,
-   *   mimeType: 'application/pdf',
-   *   base64: 'JVBERi0xLjQK...'
-   * });
-   * // Can now use response.attachmentId in createAnnouncement
+   * @param {UploadAttachmentParams} params - File parameters
+   * @returns {Promise<UploadAttachmentResponse>} Upload response with attachmentId
    */
   uploadAttachment: (params: UploadAttachmentParams) => Promise<UploadAttachmentResponse>;
+
   /**
    * Delete an attachment file from Storage.
-   * Removes the file when user removes it from UI before announcement creation.
-   * Non-critical - errors are silently logged.
+   * Delegates to useAnnouncementAttachments hook.
    * 
    * @async
    * @param {string} attachmentId - Attachment ID to delete
    * @returns {Promise<void>}
-   * 
-   * @example
-   * const vm = useAnnouncementsVM();
-   * await vm.deleteAttachment(attachmentId);
    */
   deleteAttachment: (attachmentId: string) => Promise<void>;
 
   /**
-   * Upload announcement attachments sequentially and collect their IDs.
-   * Refreshes user token before upload to ensure auth is valid.
+   * Upload multiple attachments sequentially.
+   * Delegates to useAnnouncementAttachments hook.
+   * 
+   * @async
+   * @returns {Promise<string[]>} Array of uploaded attachment IDs
    */
   uploadAttachments: (attachments: Array<{
     fileName: string;
@@ -271,7 +256,10 @@ interface AnnouncementsState {
 
   /**
    * Update announcement with new and removed attachments.
-   * Calls Cloud Function to attach files and remove old ones.
+   * Delegates to useAnnouncementAttachments hook.
+   * 
+   * @async
+   * @returns {Promise<void>}
    */
   updateAttachments: (
     announcementId: string,
@@ -280,7 +268,10 @@ interface AnnouncementsState {
   ) => Promise<void>;
 
   /**
-   * Calculate removed attachment IDs by comparing existing and remaining attachments.
+   * Calculate removed attachment IDs.
+   * Delegates to useAnnouncementAttachments hook.
+   * 
+   * @returns {string[]} IDs of removed attachments
    */
   getRemoveAttachmentIds: (originalAttachments: any[], remainingAttachments: any[]) => string[];
 }
@@ -604,102 +595,31 @@ export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
   clearError: () => set({ error: null }),
 
   /**
-   * Upload an attachment file
+   * Delegate to useAnnouncementAttachments hook
    */
-  uploadAttachment: async (params: UploadAttachmentParams) => {
-    try {
-      const response = await uploadAnnouncementAttachment(params);
-      return response;
-    } catch (err: any) {
-      let errorMsg = 'announcements.attachmentUploadFailed';
-      
-      if (err instanceof AppError) {
-        errorMsg = err.message;
-      } else if (err?.code === 'functions/permission-denied') {
-        errorMsg = 'announcements.permissionDenied';
-      } else if (err?.code === 'functions/resource-exhausted') {
-        errorMsg = 'announcements.fileTooLarge';
-      } else if (err?.message) {
-        errorMsg = err.message;
-      }
-      
-      set({ error: errorMsg });
-      throw err;
-    }
-  },
-
-  /**
-   * Delete an attachment file from Storage.
-   * Used when user removes attachments before announcement creation.
-   */
-  deleteAttachment: async (attachmentId: string) => {
-    try {
-      await deleteAnnouncementAttachmentFile(attachmentId);
-    } catch (err: any) {
-      console.error('Delete attachment error:', err);
-      // Non-critical error - don't set global error state
-    }
-  },
-
-  /**
-   * Upload announcement attachments sequentially and collect their IDs.
-   * Refreshes user token before upload to ensure auth is valid.
-   */
-  uploadAttachments: async (attachments: Array<{
+  uploadAttachment: (params: UploadAttachmentParams) => 
+    useAnnouncementAttachments.getState().uploadAttachment(params),
+  
+  deleteAttachment: (attachmentId: string) =>
+    useAnnouncementAttachments.getState().deleteAttachment(attachmentId),
+  
+  uploadAttachments: (attachments: Array<{
     fileName: string;
     mimeType: string;
     size: number;
     base64: string;
-  }>): Promise<string[]> => {
-    const newAttachmentIds: string[] = [];
-
-    if (attachments.length === 0) {
-      return newAttachmentIds;
-    }
-
-    // Refresh token before upload
-    const user = getCurrentUser();
-    if (user) {
-      await user.getIdToken(true);
-    }
-
-    // Upload attachments sequentially
-    for (const att of attachments) {
-      const uploadResult = await uploadAnnouncementAttachment({
-        fileName: att.fileName,
-        size: att.size,
-        mimeType: att.mimeType,
-        base64: att.base64,
-      });
-      newAttachmentIds.push(uploadResult.attachmentId);
-    }
-
-    return newAttachmentIds;
-  },
-
-  /**
-   * Update announcement with new and removed attachments.
-   * Calls Cloud Function to attach files and remove old ones.
-   */
-  updateAttachments: async (
+  }>) => useAnnouncementAttachments.getState().uploadAttachments(attachments),
+  
+  updateAttachments: (
     announcementId: string,
     allAttachmentIds: string[],
     removeAttachmentIds?: string[]
-  ): Promise<void> => {
-    if (allAttachmentIds.length === 0 && !removeAttachmentIds?.length) {
-      return; // No changes needed
-    }
-
-    await updateAnnouncementWithAttachments(announcementId, allAttachmentIds, removeAttachmentIds);
-  },
-
-  /**
-   * Calculate removed attachment IDs by comparing existing and remaining attachments.
-   */
-  getRemoveAttachmentIds: (originalAttachments: any[], remainingAttachments: any[]): string[] => {
-    const remainingIds = new Set(remainingAttachments.map(att => att.id));
-    return originalAttachments
-      .map(att => att.id)
-      .filter(id => !remainingIds.has(id));
-  },
+  ) => useAnnouncementAttachments.getState().updateAttachments(
+    announcementId,
+    allAttachmentIds,
+    removeAttachmentIds
+  ),
+  
+  getRemoveAttachmentIds: (originalAttachments: any[], remainingAttachments: any[]) =>
+    useAnnouncementAttachments.getState().getRemoveAttachmentIds(originalAttachments, remainingAttachments),
 }));

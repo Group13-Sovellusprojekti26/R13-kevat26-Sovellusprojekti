@@ -29,11 +29,7 @@ const companyFaultReportsStore = createStore<CompanyFaultReportsVM>((set, get) =
   loadReports: async () => {
     set({ loading: true, error: null });
     try {
-      console.log('useCompanyFaultReportsVM loadReports called');
       const reports = await getFaultReportsForRole();
-      console.log('useCompanyFaultReportsVM reports loaded', {
-        count: reports.length,
-      });
       set({ reports, loading: false, error: null });
     } catch (error: unknown) {
       const errorMessage = parseFirebaseError(error);

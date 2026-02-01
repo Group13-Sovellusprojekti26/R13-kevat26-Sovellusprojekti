@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MaintenanceStackParamList } from './MaintenanceStack';
 import { MaintenanceDashboardScreen } from '@/features/maintenance/views/MaintenanceDashboardScreen';
-import { ManageFaultReportsScreen } from '@/features/maintenance/views/ManageFaultReportsScreen';
+import { FaultReportListScreen } from '@/shared/components/FaultReportListScreen';
 import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
 import { signOut } from '@/features/auth/services/auth.service';
 import { getUserProfile } from '@/data/repositories/users.repo';
@@ -103,7 +103,7 @@ export const MaintenanceTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageFaultReports"
-        component={ManageFaultReportsScreen}
+        component={() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
         options={{
           title: t('maintenance.dashboard.manageFaults'),
           headerTitleAlign: 'left',
