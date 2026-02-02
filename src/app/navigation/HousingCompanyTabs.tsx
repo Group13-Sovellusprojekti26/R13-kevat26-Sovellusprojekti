@@ -22,6 +22,25 @@ export type HousingCompanyTabsParamList = {
 const Tab = createBottomTabNavigator<HousingCompanyTabsParamList>();
 
 /**
+ * Header actions component - extracted to properly use hooks
+ */
+const HeaderActions: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
+  return (
+    <View style={styles.headerActions}>
+      <IconButton
+        icon="cog-outline"
+        onPress={() => navigation.navigate('Settings')}
+      />
+      <IconButton
+        icon="logout"
+        onPress={onLogout}
+      />
+    </View>
+  );
+};
+
+/**
  * Bottom tab navigation for housing company users
  */
 export const HousingCompanyTabs: React.FC = () => {
@@ -68,21 +87,7 @@ export const HousingCompanyTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
@@ -104,21 +109,7 @@ export const HousingCompanyTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="wrench" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
@@ -139,21 +130,7 @@ export const HousingCompanyTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="bullhorn" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       >
         {() => <AnnouncementsScreen />}

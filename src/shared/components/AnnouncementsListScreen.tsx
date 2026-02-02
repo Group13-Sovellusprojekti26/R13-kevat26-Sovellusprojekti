@@ -52,6 +52,7 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     announcements,
     loading,
     loadingMore,
+    refreshing,
     hasMore,
     showExpired,
     selectedTypes,
@@ -59,6 +60,7 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     toggleTypeFilter,
     deleteAnnouncement,
     loadMore,
+    refresh,
   } = useAnnouncementsVM();
 
   // Setup filter modal with helper functions
@@ -158,8 +160,10 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
         renderItem={renderAnnouncement}
         keyExtractor={(item) => item.id}
         isLoading={loading}
+        isRefreshing={refreshing}
         isLoadingMore={loadingMore}
         hasMore={hasMore}
+        onRefresh={() => refresh(housingCompanyId)}
         onEndReached={() => loadMore(housingCompanyId)}
         config={{
           ...listScreenDefaults,

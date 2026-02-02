@@ -23,6 +23,25 @@ export type ResidentTabsParamList = {
 const Tab = createBottomTabNavigator<ResidentTabsParamList>();
 
 /**
+ * Header actions component - extracted to properly use hooks
+ */
+const HeaderActions: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
+  return (
+    <View style={styles.headerActions}>
+      <IconButton
+        icon="cog-outline"
+        onPress={() => navigation.navigate('Settings')}
+      />
+      <IconButton
+        icon="logout"
+        onPress={onLogout}
+      />
+    </View>
+  );
+};
+
+/**
  * Bottom tab navigation for resident users
  */
 export const ResidentTabs: React.FC = () => {
@@ -69,21 +88,7 @@ export const ResidentTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
@@ -105,21 +110,7 @@ export const ResidentTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="bell" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
@@ -141,57 +132,35 @@ export const ResidentTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="clipboard-list" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
         name="CreateFaultReport"
         component={CreateFaultReportScreen}
-        options={{
-          title: t('faults.createTitle'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('faults.createTitle'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="plus-circle" size={size} color={color} />
-          ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+        options={({ route }) => {
+          const faultReportId = route.params?.faultReportId;
+          const isEditMode = Boolean(faultReportId);
+          const title = isEditMode ? t('faults.editTitle') : t('faults.createTitle');
+          
+          return {
+            title,
+            headerTitleAlign: 'left',
+            headerTitleStyle: {
+              fontSize: 18,
+            },
+            headerTitleContainerStyle: {
+              paddingRight: 96,
+            },
+            headerRightContainerStyle: {
+              paddingRight: 4,
+            },
+            tabBarLabel: t('faults.createTitle'),
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons name="plus-circle" size={size} color={color} />
+            ),
+            headerRight: () => <HeaderActions onLogout={handleLogout} />,
+          };
         }}
       />
     </Tab.Navigator>

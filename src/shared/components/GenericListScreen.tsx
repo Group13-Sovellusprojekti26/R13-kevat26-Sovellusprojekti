@@ -2,7 +2,8 @@ import React, { ReactNode } from 'react';
 import { View, FlatList, ListRenderItem, RefreshControl, StyleSheet } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { spacing } from '@/app/theme/theme';
+import { spacing, lightTheme, darkTheme } from '@/app/theme/theme';
+import { useSettingsVM } from '@/features/settings/viewmodels/useSettingsVM';
 
 /**
  * Configuration object for controlling GenericListScreen appearance and behavior.
@@ -65,14 +66,10 @@ const defaultStyles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     paddingTop: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   filterContainer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   listContent: {
     padding: spacing.lg,
@@ -145,6 +142,12 @@ export const GenericListScreen = React.forwardRef<FlatList, GenericListScreenPro
     const theme = useTheme();
     const mergedConfig = { ...defaultConfig, ...config };
 
+    const { theme: themeMode } = useSettingsVM();
+    const resolvedTheme = themeMode === 'dark' ? darkTheme : lightTheme;
+
+    // Force remount when persisted theme changes (more reliable than relying on native refresh control updates)
+    const refreshControlKey = `refresh-${themeMode}`;
+
     return (
       <SafeAreaView edges={['left', 'right', 'bottom']} style={[defaultStyles.container, { backgroundColor: theme.colors.background }]}>
         {/* Header component (create button, etc.) */}
@@ -161,18 +164,19 @@ export const GenericListScreen = React.forwardRef<FlatList, GenericListScreenPro
           </View>
         )}
 
-        {/* Loading state */}
+        {/* Loading state - only show spinner on initial load when no data */}
         {isLoading && !data.length && (
           <View style={defaultStyles.centerContainer}>
             {mergedConfig.loadingComponent}
           </View>
         )}
 
-        {/* List or empty state */}
-        {!isLoading && (
+        {/* List or empty state - show list if we have data, even during loading */}
+        {(data.length > 0 || !isLoading) && (
           <>
             {data.length > 0 ? (
               <FlatList
+                key={refreshControlKey}
                 ref={ref}
                 data={data}
                 renderItem={renderItem}
@@ -188,7 +192,14 @@ export const GenericListScreen = React.forwardRef<FlatList, GenericListScreenPro
                 ]}
                 refreshControl={
                   onRefresh ? (
-                    <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+                    <RefreshControl 
+                      key={refreshControlKey}
+                      refreshing={isRefreshing} 
+                      onRefresh={onRefresh}
+                      tintColor={resolvedTheme.colors.onBackground}
+                      colors={[resolvedTheme.colors.onBackground]}
+                      progressBackgroundColor={resolvedTheme.colors.background}
+                    />
                   ) : undefined
                 }
                 onEndReached={() => {

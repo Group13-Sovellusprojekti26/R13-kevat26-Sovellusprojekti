@@ -3,7 +3,6 @@ import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, useTheme, Surface } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Screen } from '../../../shared/components/Screen';
 import { useSettingsVM } from '../viewmodels/useSettingsVM';
 import type { ThemeMode, LanguageCode } from '../types/settings.types';
 
@@ -34,8 +33,7 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
         {/* Theme Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -246,7 +244,6 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
-    </Screen>
   );
 };
 

@@ -131,10 +131,16 @@ export const CreateFaultReportScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
+      // In edit mode, register cleanup to clear state when leaving
       if (faultReportId) {
-        return;
+        return () => {
+          // Cleanup when leaving edit mode - clear params so new report can be created
+          navigation.setParams({ faultReportId: undefined });
+          reset();
+        };
       }
 
+      // Clear form and ViewModel for new reports
       resetForm({
         title: '',
         description: '',
@@ -145,7 +151,8 @@ export const CreateFaultReportScreen: React.FC = () => {
       });
       setExistingImageUrls([]);
       reset();
-    }, [faultReportId, resetForm, reset])
+      return undefined;
+    }, [faultReportId, resetForm, reset, navigation])
   );
 
   useEffect(() => {
@@ -179,7 +186,7 @@ export const CreateFaultReportScreen: React.FC = () => {
       });
       setExistingImageUrls(dedupeUrls(report.imageUrls ?? []));
     }
-  }, [report, resetForm]);
+  }, [report, resetForm, isEditMode]);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -549,7 +556,12 @@ export const CreateFaultReportScreen: React.FC = () => {
           )}
           <TFButton
             title={t('faults.cancel')}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              // Clear ViewModel state and route params before navigating away
+              reset();
+              navigation.setParams({ faultReportId: undefined });
+              navigation.goBack();
+            }}
             mode="outlined"
             disabled={loading}
             fullWidth

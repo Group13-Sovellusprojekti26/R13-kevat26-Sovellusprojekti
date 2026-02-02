@@ -243,13 +243,6 @@ export const updateFaultReportStatus = onCall(
   async (request) => {
     const uid = assertAuth(request);
     const {housingCompanyId, role} = await getUserProfile(uid);
-    assertAllowedRole(role, [
-      "admin",
-      "maintenance",
-      "service_company",
-      "property_manager",
-      "housing_company",
-    ]);
 
     const {faultReportId, status, comment} = request.data || {};
     if (
@@ -265,6 +258,40 @@ export const updateFaultReportStatus = onCall(
       throw new HttpsError("not-found", "Fault report not found.");
     }
     const report = snap.data();
+    
+    // Check housing company match
+    if (report?.housingCompanyId !== housingCompanyId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Cross-company access blocked."
+      );
+    }
+
+    // Residents can only cancel their own reports
+    if (role === "resident") {
+      if (report?.createdBy !== uid) {
+        throw new HttpsError(
+          "permission-denied",
+          "Residents can only cancel their own reports."
+        );
+      }
+      if (status !== "cancelled") {
+        throw new HttpsError(
+          "permission-denied",
+          "Residents can only change status to cancelled."
+        );
+      }
+    } else {
+      // Non-residents must have proper roles
+      assertAllowedRole(role, [
+        "admin",
+        "maintenance",
+        "service_company",
+        "property_manager",
+        "housing_company",
+      ]);
+    }
+
     const knownStatuses = new Set([
       "created",
       "open",
@@ -289,12 +316,6 @@ export const updateFaultReportStatus = onCall(
       currentStatus,
       nextStatus: status,
     });
-    if (report?.housingCompanyId !== housingCompanyId) {
-      throw new HttpsError(
-        "permission-denied",
-        "Cross-company access blocked."
-      );
-    }
 
     const updates: Record<string, unknown> = {
       status,

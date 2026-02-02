@@ -31,7 +31,7 @@ export const ResidentStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('faults.detailTitle'),
-          headerBackTitle: t('faults.faultReports'),
+          headerBackTitle: t('faults.title'),
         }}
       />
       <Stack.Screen

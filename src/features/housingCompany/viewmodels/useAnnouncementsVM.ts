@@ -47,6 +47,7 @@ interface AnnouncementsState {
   selectedTypes: AnnouncementType[];
   loading: boolean;
   loadingMore: boolean;
+  refreshing: boolean;
   hasMore: boolean;
   error: string | null;
   
@@ -308,6 +309,7 @@ export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
   selectedTypes: Object.values(AnnouncementType),
   loading: false,
   loadingMore: false,
+  refreshing: false,
   hasMore: true,
   error: null,
   activeLastDoc: null,
@@ -317,16 +319,26 @@ export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
   /**
    * Fetch initial announcements (reset pagination)
    * Loads first page of active or expired announcements
+   * Uses silent refresh if data already exists to prevent UI flash
    */
   fetchAnnouncements: async (housingCompanyId: string) => {
-    set({ loading: true, error: null, showExpired: false, announcements: [], activeLastDoc: null, expiredLastDoc: null });
+    const hasExistingData = get().announcements.length > 0;
+    
+    // Keep existing data visible during refresh if we have data
+    if (hasExistingData) {
+      set({ loading: false, error: null });
+    } else {
+      set({ loading: true, error: null, showExpired: false, announcements: [], activeLastDoc: null, expiredLastDoc: null });
+    }
+    
     try {
       const result = await getActiveAnnouncementsByHousingCompany(housingCompanyId, get().pageLimit);
       set({ 
         announcements: result.announcements,
         activeLastDoc: result.lastDoc,
         hasMore: result.lastDoc !== null,
-        loading: false 
+        loading: false,
+        showExpired: false
       });
     } catch (err) {
       const error =
@@ -338,12 +350,24 @@ export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
   },
 
   /**
+   * Manually refresh announcements (pull-to-refresh)
+   * Uses refreshing state to show refresh indicator without hiding existing data
+   */
+  refresh: async (housingCompanyId: string) => {
+    set({ refreshing: true });
+    await get().fetchAnnouncements(housingCompanyId);
+    set({ refreshing: false });
+  },
+
+  /**
    * Toggle between active and expired announcements view
+   * Keeps existing data visible during transition to prevent UI flash
    */
   toggleShowExpired: (showExpired?: boolean) => {
     const current = get();
     const newShowExpired = showExpired !== undefined ? showExpired : !current.showExpired;
-    set({ showExpired: newShowExpired, announcements: [], loading: true });
+    // Don't clear announcements or show loading spinner - keep old data visible
+    set({ showExpired: newShowExpired });
     
     // Fetch first page of the toggled view
     const profile = getUserProfile().then(p => {
@@ -389,9 +413,11 @@ export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
   /**
    * Set selected announcement types filter
    * Resets pagination and fetches with new filter
+   * Keeps existing data visible during filter change to prevent UI flash
    */
   setSelectedTypes: (types: AnnouncementType[]) => {
-    set({ selectedTypes: types, announcements: [], loading: true, activeLastDoc: null, expiredLastDoc: null });
+    // Keep old data visible, don't show loading spinner
+    set({ selectedTypes: types, activeLastDoc: null, expiredLastDoc: null });
     
     const profile = getUserProfile().then(p => {
       if (p) {

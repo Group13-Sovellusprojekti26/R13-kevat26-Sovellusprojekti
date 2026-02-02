@@ -27,14 +27,21 @@ const companyFaultReportsStore = createStore<CompanyFaultReportsVM>((set, get) =
   refreshing: false,
 
   loadReports: async () => {
-    set({ loading: true, error: null });
+    const hasExistingData = get().reports.length > 0;
+    // Only show loading spinner on initial load, otherwise silent refresh
+    if (!hasExistingData) {
+      set({ loading: true, error: null });
+    } else {
+      set({ error: null });
+    }
+    
     try {
       const reports = await getFaultReportsForRole();
-      set({ reports, loading: false, error: null });
+      set({ reports, loading: false, refreshing: false, error: null });
     } catch (error: unknown) {
       const errorMessage = parseFirebaseError(error);
       logError(error, 'Load Company Fault Reports');
-      set({ loading: false, error: errorMessage });
+      set({ loading: false, refreshing: false, error: errorMessage });
     }
   },
 

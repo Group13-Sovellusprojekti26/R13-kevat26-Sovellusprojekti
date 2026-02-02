@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
 import { Text, Chip, ActivityIndicator } from 'react-native-paper';
-import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/shared/components/Screen';
+import { TFButton } from '@/shared/components/TFButton';
 import { StatusActionBar } from '@/shared/components/StatusActionBar';
 import { MediaViewer } from '@/shared/components/MediaViewer';
 import { FaultReportStatus, UrgencyLevel, UserRole } from '@/data/models/enums';
@@ -11,6 +12,7 @@ import { useFaultReportDetailsVM } from '@/shared/viewmodels/useFaultReportDetai
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
 import { getStatusLabelKey, StatusActionDefinition } from '@/shared/utils/faultReportStatusActions';
 import { useFaultReportListVM } from '@/features/resident/faultReports/viewmodels/useFaultReportListVM';
+import { getCurrentUser } from '@/features/auth/services/auth.service';
 
 type FaultReportDetailsRouteParams = {
   FaultReportDetails: { faultReportId: string };
@@ -33,6 +35,7 @@ const getUrgencyLabel = (urgency: UrgencyLevel, t: (key: string) => string): str
 
 export const FaultReportDetailsScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<FaultReportDetailsRouteParams, 'FaultReportDetails'>>();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -51,6 +54,14 @@ export const FaultReportDetailsScreen: React.FC = () => {
   const refreshResidentReports = useFaultReportListVM(state => state.refresh);
   const canManageWorkflow = userRole === UserRole.SERVICE_COMPANY;
   const shouldRenderActionBar = canManageWorkflow;
+  
+  // Check if current user can edit this report
+  const currentUser = getCurrentUser();
+  const isResident = userRole === UserRole.RESIDENT;
+  const isOwnReport = report?.createdByUserId === currentUser?.uid;
+  const isEditable = isResident && isOwnReport && 
+    (report?.status === FaultReportStatus.OPEN || report?.status === FaultReportStatus.CREATED);
+  const shouldShowEditButton = isEditable;
   const inProgressExtraActions = useMemo<StatusActionDefinition[]>(() => {
     if (
       !canManageWorkflow ||
@@ -194,6 +205,24 @@ export const FaultReportDetailsScreen: React.FC = () => {
             </View>
           )}
 
+          {shouldShowEditButton && (
+            <View style={styles.editButtonContainer}>
+              <TFButton
+                title={t('faults.editTitle')}
+                onPress={() => {
+                  // Navigate to CreateFaultReport tab with edit params
+                  // Using nested navigation structure: Stack -> Tabs -> CreateFaultReport
+                  navigation.navigate('Tabs', {
+                    screen: 'CreateFaultReport',
+                    params: { faultReportId: report.id }
+                  });
+                }}
+                mode="outlined"
+                icon="pencil"
+              />
+            </View>
+          )}
+
           {error && (
             <Text style={styles.errorText} onPress={clearError}>
               {error}
@@ -266,6 +295,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageSection: {
+    marginBottom: 12,
+  },
+  editButtonContainer: {
+    marginTop: 16,
     marginBottom: 12,
   },
   additionalInfoSection: {

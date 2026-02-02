@@ -23,6 +23,25 @@ export type MaintenanceTabsParamList = {
 const Tab = createBottomTabNavigator<MaintenanceTabsParamList>();
 
 /**
+ * Header actions component - extracted to properly use hooks
+ */
+const HeaderActions: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+  const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
+  return (
+    <View style={styles.headerActions}>
+      <IconButton
+        icon="cog-outline"
+        onPress={() => navigation.navigate('Settings')}
+      />
+      <IconButton
+        icon="logout"
+        onPress={onLogout}
+      />
+    </View>
+  );
+};
+
+/**
  * Bottom tab navigation for maintenance and property manager users
  */
 export const MaintenanceTabs: React.FC = () => {
@@ -84,21 +103,7 @@ export const MaintenanceTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="home" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
@@ -120,21 +125,7 @@ export const MaintenanceTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="wrench" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       />
       <Tab.Screen
@@ -155,21 +146,7 @@ export const MaintenanceTabs: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="bullhorn" size={size} color={color} />
           ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<MaintenanceStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
+          headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
       >
         {() => <AnnouncementsScreen />}
