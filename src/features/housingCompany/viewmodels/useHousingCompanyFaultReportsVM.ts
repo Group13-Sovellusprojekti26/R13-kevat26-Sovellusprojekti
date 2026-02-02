@@ -27,11 +27,7 @@ export const useHousingCompanyFaultReportsVM = create<HousingCompanyFaultReports
   loadReports: async () => {
     set({ loading: true, error: null });
     try {
-      console.log('HousingCompanyFaultReportsVM loadReports called');
       const reports = await getFaultReportsForRole();
-      console.log('HousingCompanyFaultReportsVM', {
-        returnedCount: reports.length,
-      });
       set({ reports, loading: false, error: null });
     } catch (error: unknown) {
       const errorMessage = parseFirebaseError(error);

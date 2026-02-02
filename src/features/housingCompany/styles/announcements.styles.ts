@@ -3,87 +3,22 @@ import { spacing, borderRadius } from '@/app/theme/theme';
 
 /**
  * Unified styles for announcement features (Create, Edit, List)
- * Used by: CreateAnnouncementScreen, EditAnnouncementScreen, AnnouncementsListScreen
+ * Used by: CreateAnnouncementScreen, EditAnnouncementScreen, AnnouncementsListScreen, AnnouncementCard, AnnouncementDetailScreen
  * Best practice: All announcement-related styles in one place for consistency
  */
 
-export const createAnnouncementStyles = StyleSheet.create({
+/**
+ * Styles for announcement form (Create/Edit screens)
+ * Shared by CreateAnnouncementScreen and EditAnnouncementScreen via AnnouncementFormContent
+ */
+export const announcementFormStyles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  keyboardAvoidingContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  title: {
-    marginBottom: spacing.xl,
-  },
-  field: {
-    marginBottom: spacing.sm,
-  },
-  typeField: {
-    justifyContent: 'center',
-    paddingLeft: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  counter: {
-    marginBottom: spacing.lg,
-    opacity: 0.6,
-  },
-  fieldLabel: {
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
-  },
-  checkboxBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-  },
-  checkboxLabel: {
-    marginLeft: spacing.md,
-    flex: 1,
-  },
-  submitButton: {
-    marginBottom: spacing.md,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-    alignItems: 'stretch',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    padding: spacing.lg,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    minHeight: 280,
-    maxHeight: Dimensions.get('window').height * 0.85,
-    flexShrink: 0,
-  },
-  modalOption: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    marginBottom: spacing.sm,
-  },
-});
-
-export const editAnnouncementStyles = StyleSheet.create({
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  flex: {
-    flex: 1,
   },
   keyboardAvoidingContainer: {
     flex: 1,
@@ -159,6 +94,10 @@ export const editAnnouncementStyles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
 });
+
+// Legacy export aliases for backward compatibility
+export const createAnnouncementStyles = announcementFormStyles;
+export const editAnnouncementStyles = announcementFormStyles;
 
 export const announcementsListStyles = StyleSheet.create({
   listContainer: {

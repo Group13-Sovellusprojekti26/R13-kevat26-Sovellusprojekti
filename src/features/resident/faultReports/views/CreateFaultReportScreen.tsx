@@ -4,8 +4,6 @@ import { Checkbox, Text, SegmentedButtons, useTheme, Surface } from 'react-nativ
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -16,6 +14,7 @@ import { TFTextField } from '../../../../shared/components/TFTextField';
 import { useCreateFaultReportVM } from '../viewmodels/useCreateFaultReportVM';
 import { FaultReportStatus, UrgencyLevel, UserRole } from '../../../../data/models/enums';
 import { haptic } from '../../../../shared/utils/haptics';
+import { useMediaUpload } from '../../../../shared/hooks/useMediaUpload';
 import type { ResidentTabsParamList } from '../../../../app/navigation/ResidentTabs';
 
 // ---------------- VALIDATION ----------------
@@ -68,14 +67,22 @@ export const CreateFaultReportScreen: React.FC = () => {
       report?.status === FaultReportStatus.OPEN ||
       report?.status === FaultReportStatus.CREATED);
 
-  const [imageUris, setImageUris] = useState<string[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const dedupeUrls = (urls: string[]) => Array.from(new Set(urls));
   const mergedExistingImageUrls = useMemo(
     () => dedupeUrls([...(report?.imageUrls ?? []), ...existingImageUrls]),
     [existingImageUrls, report?.imageUrls]
   );
-  const removeImage = (index: number) => {
+
+  // Initialize media upload hook - supports images only for fault reports
+  const { media, pickImage, removeMedia } = useMediaUpload({
+    maxFileSize: 5 * 1024 * 1024, // 5 MB per image
+    maxFiles: 10,
+    allowedTypes: ['image/jpeg', 'image/png', 'image/heic', 'image/heif'],
+    imageQuality: 0.8,
+  });
+
+  const removeImage = (id: string) => {
     Alert.alert(
       t('faults.deleteImage'),
       t('faults.deleteImageConfirm'),
@@ -86,7 +93,7 @@ export const CreateFaultReportScreen: React.FC = () => {
           style: 'destructive',
           onPress: () => {
             haptic.light();
-            setImageUris(prev => prev.filter((_, i) => i !== index));
+            removeMedia(id);
           },
         },
       ]
@@ -137,7 +144,6 @@ export const CreateFaultReportScreen: React.FC = () => {
         hasPets: false,
       });
       setExistingImageUrls([]);
-      setImageUris([]);
       reset();
     }, [faultReportId, resetForm, reset])
   );
@@ -154,7 +160,6 @@ export const CreateFaultReportScreen: React.FC = () => {
         hasPets: false,
       });
       setExistingImageUrls([]);
-      setImageUris([]);
       clearError();
       reset();
     });
@@ -173,14 +178,12 @@ export const CreateFaultReportScreen: React.FC = () => {
         hasPets: report.hasPets ?? false,
       });
       setExistingImageUrls(dedupeUrls(report.imageUrls ?? []));
-      setImageUris([]);
     }
-  }, [isEditMode, report, resetForm]);
+  }, [report, resetForm]);
 
   useEffect(() => {
     if (!isEditMode) {
       setExistingImageUrls([]);
-      setImageUris([]);
     }
   }, [isEditMode]);
 
@@ -211,51 +214,18 @@ export const CreateFaultReportScreen: React.FC = () => {
   const descriptionValue = watch('description');
   const descriptionCount = descriptionValue?.length ?? 0;
 
-  // ---------------- IMAGE PICKER ----------------
 
-  const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8,
-      allowsEditing: false,
+  // -------- HELPER: Convert media files to data URLs --------
+  const mediaToDataUrls = (mediaFiles: typeof media): string[] => {
+    return mediaFiles.map(file => {
+      // Detect MIME type and format accordingly
+      const mimeType = file.mimeType || 'image/jpeg';
+      return `data:${mimeType};base64,${file.base64}`;
     });
-
-    if (!result.canceled && result.assets.length > 0) {
-      const asset = result.assets[0];
-      
-      try {
-        // Compress and convert image to WebP format for optimal size
-        const manipulatedImage = await ImageManipulator.manipulateAsync(
-          asset.uri,
-          [
-            // Resize if image is too large (max 1920px width)
-            { resize: { width: Math.min(asset.width ?? 1920, 1920) } },
-          ],
-          {
-            compress: 0.7,
-            format: ImageManipulator.SaveFormat.WEBP,
-            base64: true,
-          }
-        );
-
-        if (!manipulatedImage.base64) {
-          Alert.alert(t('common.error'), t('faults.imageBase64Missing'));
-          return;
-        }
-
-        const dataUrl = `data:image/webp;base64,${manipulatedImage.base64}`;
-        setImageUris(prev => (prev.includes(dataUrl) ? prev : [...prev, dataUrl]));
-      } catch (error) {
-        console.error('Image manipulation error:', error);
-        Alert.alert(t('common.error'), t('faults.imageProcessingFailed'));
-      }
-    }
   };
 
-  // ---------------- SUBMIT (HERE) ----------------
+  // -------- SUBMIT --------
 
   const onSubmit = async (data: CreateFaultReportFormData) => {
     if (loading) {
@@ -265,7 +235,8 @@ export const CreateFaultReportScreen: React.FC = () => {
 
     if (isEditMode && faultReportId) {
       try {
-        const uniqueImageUris = dedupeUrls(imageUris);
+        const imageUrisFromMedia = mediaToDataUrls(media);
+        const uniqueImageUris = dedupeUrls(imageUrisFromMedia);
         const uniqueExistingUrls = dedupeUrls(mergedExistingImageUrls);
         const descriptionToSend = report && data.description.trim() === report.description.trim()
           ? undefined
@@ -298,7 +269,7 @@ export const CreateFaultReportScreen: React.FC = () => {
 
     await submitReport({
       ...data,
-      imageUris: dedupeUrls(imageUris),
+      imageUris: dedupeUrls(mediaToDataUrls(media)),
     });
   };
 
@@ -533,15 +504,18 @@ export const CreateFaultReportScreen: React.FC = () => {
           />
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {imageUris.map((uri, index) => (
+            {media.map((mediaFile) => (
               <Pressable
-                key={index}
-                onLongPress={() => removeImage(index)}
+                key={mediaFile.id}
+                onLongPress={() => removeImage(mediaFile.id)}
                 style={styles.imageContainer}
               >
-                <Image source={{ uri }} style={styles.imagePreview} />
+                <Image 
+                  source={{ uri: `data:${mediaFile.mimeType};base64,${mediaFile.base64}` }} 
+                  style={styles.imagePreview} 
+                />
                 <Pressable
-                  onPress={() => removeImage(index)}
+                  onPress={() => removeImage(mediaFile.id)}
                   style={[styles.removeIcon, { backgroundColor: theme.colors.error }]}
                 >
                   <Text style={styles.removeIconText}>✕</Text>

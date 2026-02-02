@@ -1,27 +1,22 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {
-  View,
-  FlatList,
-  ListRenderItem,
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-} from 'react-native';
-import { Text, useTheme, RadioButton, Surface, Checkbox } from 'react-native-paper';
+import React, { useCallback, useMemo } from 'react';
+import { View } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import i18n from '@/app/i18n/i18n';
-
-import { Screen } from './Screen';
+import { GenericListScreen } from './GenericListScreen';
+import { ListLoadingComponent } from './ListLoadingComponent';
 import { TFButton } from './TFButton';
+import { GenericFilterModal } from './GenericFilterModal';
+import { GenericListItemCard } from './GenericListItemCard';
 import { AnnouncementCard } from '../../features/housingCompany/views/components/AnnouncementCard';
 import { useAnnouncementsVM } from '../../features/housingCompany/viewmodels/useAnnouncementsVM';
+import { useAnnouncementLocale } from '../../features/housingCompany/hooks/useAnnouncementLocale';
 import { Announcement } from '../../data/models/Announcement';
 import { AnnouncementType } from '../../data/models/enums';
 import { AnnouncementPermissions } from '../types/announcementPermissions';
 import { haptic } from '../utils/haptics';
-import { announcementsListScreenStyles as styles } from '../../features/housingCompany/styles/announcements.styles';
+import { useFilterModal, createRadioFilter, createCheckboxFilter } from '../hooks/useFilterModal';
+import { listScreenDefaults } from '@/shared/config/listScreenConfig';
 
 /**
  * Props interface for AnnouncementsListScreen component.
@@ -42,34 +37,6 @@ interface AnnouncementsListScreenProps {
   onDeletePress?: (announcement: Announcement) => void;
 }
 
-/**
- * Unified announcements list screen component for displaying announcements to users of all roles.
- * Provides filtering by active/expired status and announcement type.
- * Supports cursor-based pagination with infinite scrolling via FlatList.
- * Displays create button based on user permissions.
- * Integrates with useAnnouncementsVM for state management.
- * 
- * Features:
- * - Role-based action buttons (edit/delete) conditional on permissions
- * - Filter modal with status (active/expired) and type (checkboxes) options
- * - Infinite scroll pagination triggered at list end
- * - Empty state messaging based on current filter
- * - Haptic feedback on interactions
- * - Localized date formatting
- * 
- * @component AnnouncementsListScreen
- * @param {AnnouncementsListScreenProps} props - Component props
- * @returns {JSX.Element} Announcement list view with controls
- * 
- * @example
- * <AnnouncementsListScreen
- *   permissions={getAnnouncementPermissions(userRole)}
- *   housingCompanyId="hc_123"
- *   onCreatePress={() => navigation.navigate('CreateAnnouncement')}
- *   onEditPress={(ann) => navigation.navigate('EditAnnouncement', { id: ann.id })}
- *   onDeletePress={(ann) => showDeleteConfirm(ann)}
- * />
- */
 export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = ({
   permissions,
   housingCompanyId,
@@ -77,10 +44,9 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
   onEditPress,
   onDeletePress,
 }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const locale = useAnnouncementLocale();
   const navigation = useNavigation();
-  const theme = useTheme();
-  const [filterVisible, setFilterVisible] = useState(false);
 
   const {
     announcements,
@@ -94,6 +60,41 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     deleteAnnouncement,
     loadMore,
   } = useAnnouncementsVM();
+
+  // Setup filter modal with helper functions
+  const { filterVisible, openFilter, closeFilter, sections } = useFilterModal(
+    useMemo(
+      () => [
+        createRadioFilter(
+          t('announcements.status'),
+          showExpired ? 'expired' : 'active',
+          (value) => toggleShowExpired(value === 'expired'),
+          [
+            { label: t('announcements.active'), value: 'active' },
+            { label: t('announcements.expired'), value: 'expired' },
+          ]
+        ),
+        createCheckboxFilter(
+          t('announcements.typeFilter'),
+          selectedTypes,
+          (values) => {
+            Object.values(AnnouncementType).forEach((type) => {
+              const isCurrentlySelected = selectedTypes.includes(type);
+              const shouldBeSelected = values.includes(type);
+              if (isCurrentlySelected !== shouldBeSelected) {
+                toggleTypeFilter(type);
+              }
+            });
+          },
+          Object.values(AnnouncementType).map((type) => ({
+            label: t(`announcements.types.${type}`),
+            value: type,
+          }))
+        ),
+      ],
+      [t, showExpired, toggleShowExpired, selectedTypes, toggleTypeFilter]
+    )
+  );
 
   const handleDelete = useCallback(
     async (announcement: Announcement) => {
@@ -109,7 +110,6 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
 
   const handleCardPress = useCallback(
     (announcement: Announcement) => {
-      // Navigate to announcement details - using any to avoid type issues with navigation
       (navigation as any).navigate('AnnouncementDetail', {
         announcementId: announcement.id,
       });
@@ -117,24 +117,28 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     [navigation]
   );
 
-  const locale = i18n.language;
-
-  const renderAnnouncement: ListRenderItem<Announcement> = useCallback(
-    ({ item }) => (
-      <AnnouncementCard
+  const renderAnnouncement = useCallback(
+    ({ item }: { item: Announcement }) => (
+      <GenericListItemCard
         item={item}
-        locale={locale}
+        renderContent={(announcement) => (
+          <AnnouncementCard
+            item={announcement}
+            locale={locale}
+            onPress={() => handleCardPress(announcement)}
+            onEdit={
+              permissions.showEditDeleteActions && onEditPress
+                ? () => onEditPress(announcement)
+                : undefined
+            }
+            onDelete={
+              permissions.showEditDeleteActions && onDeletePress
+                ? () => onDeletePress(announcement)
+                : undefined
+            }
+          />
+        )}
         onPress={() => handleCardPress(item)}
-        onEdit={
-          permissions.showEditDeleteActions && onEditPress
-            ? () => onEditPress(item)
-            : undefined
-        }
-        onDelete={
-          permissions.showEditDeleteActions && onDeletePress
-            ? () => onDeletePress(item)
-            : undefined
-        }
       />
     ),
     [locale, permissions.showEditDeleteActions, onEditPress, onDeletePress, handleCardPress]
@@ -148,131 +152,51 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
   }, [showExpired, permissions.showExpiredToggle, t]);
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ flex: 1 }}>
-      {/* Create button */}
-      {permissions.showCreateButton && (
-        <View style={styles.createButtonContainer}>
-          <TFButton
-            title={t('announcements.create')}
-            onPress={() => {
-              haptic.light();
-              onCreatePress?.();
-            }}
-          />
-        </View>
-      )}
-
-      {/* Expired toggle */}
-      {permissions.showExpiredToggle && (
-        <View style={styles.filterContainer}>
-          <TFButton
-            title={t('announcements.filterButton', { filter: showExpired ? t('announcements.expired') : t('announcements.active') })}
-            mode="outlined"
-            icon="filter-variant"
-            onPress={() => setFilterVisible(true)}
-            fullWidth
-          />
-        </View>
-      )}
-
-      {/* Loading state */}
-      {loading && !announcements.length && (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" />
-        </View>
-      )}
-
-      {/* Announcements list */}
-      {!loading && announcements.length > 0 && (
-        <FlatList
-          data={announcements}
-          renderItem={renderAnnouncement}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={true}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContentContainer}
-          onEndReached={() => {
-            if (hasMore && !loadingMore) {
-              loadMore(housingCompanyId);
-            }
-          }}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" />
-              </View>
-            ) : null
-          }
-        />
-      )}
-
-      {/* Empty state */}
-      {!loading && !announcements.length && (
-        <View style={styles.emptyContainer}>
-          <Text variant="bodyMedium" style={{ textAlign: 'center' }}>
-            {emptyStateMessage}
-          </Text>
-        </View>
-      )}
-      <Modal
-        transparent
-        visible={filterVisible}
-        animationType="fade"
-        onRequestClose={() => setFilterVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Surface style={[styles.modalContent, { backgroundColor: theme.colors.surface }]} elevation={4}>
-            <ScrollView 
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalScrollContent}
-            >
-              {/* Status filter */}
-              <Text variant="labelLarge" style={styles.modalSectionTitle}>
-                {t('announcements.status')}
-              </Text>
-              <RadioButton.Group
-                onValueChange={(value) => {
-                  toggleShowExpired(value === 'expired');
-                }}
-                value={showExpired ? 'expired' : 'active'}
-              >
-                <RadioButton.Item label={t('announcements.active')} value="active" />
-                <RadioButton.Item label={t('announcements.expired')} value="expired" />
-              </RadioButton.Group>
-
-              {/* Type filter */}
-              <Text variant="labelLarge" style={styles.modalSectionTitle}>
-                {t('announcements.typeFilter')}
-              </Text>
-              {Object.values(AnnouncementType).map((type) => (
-                <View key={type} style={styles.checkboxItem}>
-                  <Checkbox
-                    status={selectedTypes.includes(type) ? 'checked' : 'unchecked'}
-                    onPress={() => toggleTypeFilter(type)}
-                  />
-                  <Text 
-                    variant="bodyMedium"
-                    style={styles.checkboxLabel}
-                    onPress={() => toggleTypeFilter(type)}
-                  >
-                    {t(`announcements.types.${type}`)}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-
+    <>
+      <GenericListScreen
+        data={announcements}
+        renderItem={renderAnnouncement}
+        keyExtractor={(item) => item.id}
+        isLoading={loading}
+        isLoadingMore={loadingMore}
+        hasMore={hasMore}
+        onEndReached={() => loadMore(housingCompanyId)}
+        config={{
+          ...listScreenDefaults,
+          headerComponent: permissions.showCreateButton ? (
             <TFButton
-              title={t('common.cancel')}
-              mode="contained"
-              onPress={() => setFilterVisible(false)}
-              fullWidth
-              style={styles.modalCloseButton}
+              title={t('announcements.create')}
+              onPress={() => {
+                haptic.light();
+                onCreatePress?.();
+              }}
             />
-          </Surface>
-        </View>
-      </Modal>
-    </View>
-    </SafeAreaView>
+          ) : null,
+          filterComponent: permissions.showExpiredToggle ? (
+            <TFButton
+              title={t('announcements.filterButton', {
+                filter: showExpired ? t('announcements.expired') : t('announcements.active'),
+              })}
+              mode="outlined"
+              icon="filter-variant"
+              onPress={openFilter}
+              fullWidth
+            />
+          ) : null,
+          loadingComponent: <ListLoadingComponent size="small" />,
+          emptyComponent: (
+            <Text variant="bodyMedium" style={{ textAlign: 'center' }}>
+              {emptyStateMessage}
+            </Text>
+          ),
+        }}
+      />
+
+      <GenericFilterModal
+        visible={filterVisible}
+        sections={sections}
+        onClose={closeFilter}
+      />
+    </>
   );
 };

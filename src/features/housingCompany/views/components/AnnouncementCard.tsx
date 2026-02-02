@@ -1,10 +1,12 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Text, useTheme, Card, IconButton } from 'react-native-paper';
+import { Text, useTheme, IconButton } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { Announcement } from '@/data/models/Announcement';
 import { formatAnnouncementDate } from '@/shared/utils/dateFormatter';
 import { announcementCardStyles as styles } from '../../styles/announcements.styles';
+import { AnnouncementPublisherInfo } from './AnnouncementPublisherInfo';
+import { GenericContentCard } from '@/shared/components/GenericContentCard';
 
 /**
  * Props interface for AnnouncementCard component.
@@ -27,7 +29,7 @@ interface AnnouncementCardProps {
 
 /**
  * Reusable announcement card component displaying announcement details with Material Design 3 styling.
- * Used throughout the announcement feature for list views and detail displays.
+ * Now built on GenericContentCard for consistency with other content types.
  * 
  * Layout (top to bottom):
  * 1. Title + action buttons (edit/delete) - optional buttons only shown if callbacks provided
@@ -73,18 +75,17 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   const isUpdated = item.createdAt.getTime() !== item.updatedAt.getTime();
 
   return (
-    <Card
-      style={[styles.card, { backgroundColor: theme.colors.surfaceVariant }]}
+    <GenericContentCard
+      item={item}
       onPress={() => onPress?.(item)}
-    >
-      <Card.Content>
-        {/* Header with title and actions */}
+      cardStyle={{ backgroundColor: theme.colors.surface }}
+      renderHeader={(announcement) => (
         <View style={styles.cardHeader}>
           <View style={styles.titleContainer}>
             <Text variant="titleMedium" numberOfLines={1} style={styles.title}>
-              {item.title}
+              {announcement.title}
             </Text>
-            {item.isPinned && (
+            {announcement.isPinned && (
               <Text variant="labelSmall" style={{ color: theme.colors.error, marginTop: 4 }}>
                 {t('announcements.pinned')}
               </Text>
@@ -96,7 +97,7 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
                 <IconButton
                   icon="pencil"
                   size={20}
-                  onPress={() => onEdit(item)}
+                  onPress={() => onEdit(announcement)}
                 />
               )}
               {onDelete && (
@@ -104,88 +105,73 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
                   icon="delete"
                   size={20}
                   iconColor={theme.colors.error}
-                  onPress={() => onDelete(item)}
+                  onPress={() => onDelete(announcement)}
                 />
               )}
             </View>
           )}
         </View>
+      )}
+      renderMetadata={(announcement) => (
+        <View>
+          <AnnouncementPublisherInfo
+            announcement={announcement}
+            locale={locale}
+          />
 
-        {/* Publisher and creation date info */}
-        <View style={styles.publisherInfoContainer}>
-          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {item.authorName}
-          </Text>
-          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            •
-          </Text>
-          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            {createdDate}
-          </Text>
-          {isUpdated && (
-            <>
-              <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                •
-              </Text>
-              <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: '500' }}>
-                {t('announcements.updated')}: {updatedDate}
-              </Text>
-            </>
-          )}
-        </View>
-
-        {/* Type badge */}
-        <View style={[styles.typeBadge, { backgroundColor: theme.colors.tertiaryContainer }]}>
-          <Text 
-            variant="labelSmall" 
-            style={[styles.typeText, { color: theme.colors.onTertiaryContainer }]}
-          >
-            {t(`announcements.types.${item.type}`)}
-          </Text>
-        </View>
-
-        {/* Date range - only show if start or end date exists */}
-        {(startDate || endDate) && (
-          <View style={styles.dateRangeContainer}>
-            {startDate && (
-              <View style={styles.dateItem}>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t('announcements.startDate')}
-                </Text>
-                <Text variant="bodySmall" style={{ fontWeight: '500' }}>
-                  {startDate}
-                  {item.startTime && ` ${item.startTime}`}
-                </Text>
-              </View>
-            )}
-            {endDate && (
-              <View style={styles.dateItem}>
-                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t('announcements.endDate')}
-                </Text>
-                <Text variant="bodySmall" style={{ fontWeight: '500' }}>
-                  {endDate}
-                  {item.endTime && ` ${item.endTime}`}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Attachment indicator */}
-        {item.attachments && item.attachments.length > 0 && (
-          <View style={styles.attachmentIndicator}>
-            <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
-              📎 {t('announcements.attachments')} ({item.attachments.length})
+          {/* Type badge */}
+          <View style={[styles.typeBadge, { backgroundColor: theme.colors.tertiaryContainer }]}>
+            <Text 
+              variant="labelSmall" 
+              style={[styles.typeText, { color: theme.colors.onTertiaryContainer }]}
+            >
+              {t(`announcements.types.${announcement.type}`)}
             </Text>
           </View>
-        )}
 
-        {/* Content preview */}
+          {/* Date range - only show if start or end date exists */}
+          {(startDate || endDate) && (
+            <View style={styles.dateRangeContainer}>
+              {startDate && (
+                <View style={styles.dateItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {t('announcements.startDate')}
+                  </Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '500' }}>
+                    {startDate}
+                    {announcement.startTime && ` ${announcement.startTime}`}
+                  </Text>
+                </View>
+              )}
+              {endDate && (
+                <View style={styles.dateItem}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                    {t('announcements.endDate')}
+                  </Text>
+                  <Text variant="bodySmall" style={{ fontWeight: '500' }}>
+                    {endDate}
+                    {announcement.endTime && ` ${announcement.endTime}`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Attachment indicator */}
+          {announcement.attachments && announcement.attachments.length > 0 && (
+            <View style={styles.attachmentIndicator}>
+              <Text variant="labelSmall" style={{ color: theme.colors.primary }}>
+                📎 {t('announcements.attachments')} ({announcement.attachments.length})
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+      renderContent={(announcement) => (
         <Text variant="bodyMedium" numberOfLines={3} style={styles.content}>
-          {item.content}
+          {announcement.content}
         </Text>
-      </Card.Content>
-    </Card>
+      )}
+    />
   );
 };
