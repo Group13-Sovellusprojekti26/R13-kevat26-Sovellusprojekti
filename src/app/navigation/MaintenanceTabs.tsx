@@ -108,9 +108,8 @@ export const MaintenanceTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageFaultReports"
-        component={() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
         options={{
-          title: t('maintenance.dashboard.manageFaults'),
+          title: t('faults.title'),
           headerTitleAlign: 'left',
           headerTitleStyle: {
             fontSize: 18,
@@ -127,11 +126,13 @@ export const MaintenanceTabs: React.FC = () => {
           ),
           headerRight: () => <HeaderActions onLogout={handleLogout} />,
         }}
-      />
+      >
+        {() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
+      </Tab.Screen>
       <Tab.Screen
         name="ManageAnnouncements"
         options={{
-          title: t('maintenance.dashboard.manageAnnouncements'),
+          title: t('announcements.title'),
           headerTitleAlign: 'left',
           headerTitleStyle: {
             fontSize: 18,

@@ -4,6 +4,9 @@ export interface FaultReport {
   id: string;
   userId: string;
   createdByUserId: string;
+  createdByName?: string; // Display name of the user who created the report
+  createdByApartment?: string; // Apartment number of the user who created the report
+  createdByBuilding?: string; // Building identifier/number of the user
   apartmentId?: string;
   buildingId: string;
   housingCompanyId: string;

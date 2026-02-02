@@ -25,6 +25,9 @@ import { getUserProfile } from './users.repo';
 interface FirestoreFaultReportData {
   createdBy: string;
   createdByUserId?: string;
+  createdByName?: string;
+  createdByApartment?: string;
+  createdByBuilding?: string;
   buildingId: string;
   housingCompanyId: string;
   apartmentId?: string;
@@ -41,6 +44,53 @@ interface FirestoreFaultReportData {
   assignedTo?: string;
   allowMasterKeyAccess?: boolean;
   hasPets?: boolean;
+}
+
+/**
+ * Helper function to enrich fault reports with creator user information
+ */
+async function enrichWithUserInfo(reports: FaultReport[]): Promise<FaultReport[]> {
+  // Get unique user IDs
+  const userIds = [...new Set(reports.map(r => r.createdByUserId))];
+  
+  // Fetch all user profiles in parallel
+  const userProfiles = await Promise.all(
+    userIds.map(async (userId) => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          return {
+            id: userId,
+            name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
+            apartment: data.apartmentNumber,
+            building: data.buildingId,
+          };
+        }
+      } catch (error) {
+        console.error(`Failed to fetch user ${userId}:`, error);
+      }
+      return null;
+    })
+  );
+
+  // Create a map for quick lookup
+  const userMap = new Map(
+    userProfiles
+      .filter((u): u is NonNullable<typeof u> => u !== null)
+      .map(u => [u.id, u])
+  );
+
+  // Enrich reports with user info
+  return reports.map(report => {
+    const user = userMap.get(report.createdByUserId);
+    return {
+      ...report,
+      createdByName: user?.name || report.createdByName,
+      createdByApartment: user?.apartment || report.createdByApartment,
+      createdByBuilding: user?.building || report.createdByBuilding,
+    };
+  });
 }
 
 const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport => {
@@ -69,6 +119,9 @@ const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport
     id,
     userId: createdByUserId,
     createdByUserId,
+    createdByName: data.createdByName,
+    createdByApartment: data.createdByApartment,
+    createdByBuilding: data.createdByBuilding,
     apartmentId: data.apartmentId ?? data.apartmentNumber ?? undefined,
     buildingId: data.buildingId,
     housingCompanyId: data.housingCompanyId,
@@ -102,7 +155,8 @@ export async function getFaultReportsByUser(): Promise<FaultReport[]> {
   );
 
   const snapshot = await getDocs(reportsQuery);
-  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  return enrichWithUserInfo(reports);
 }
 
 export async function getFaultReportsForRole(): Promise<FaultReport[]> {
@@ -143,7 +197,8 @@ export async function getFaultReportsForRole(): Promise<FaultReport[]> {
   });
 
   const snapshot = await getDocs(reportsQuery);
-  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  return enrichWithUserInfo(reports);
 }
 
 export async function getFaultReportsByBuilding(): Promise<FaultReport[]> {
@@ -160,7 +215,8 @@ export async function getFaultReportsByBuilding(): Promise<FaultReport[]> {
   );
 
   const snapshot = await getDocs(reportsQuery);
-  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  return enrichWithUserInfo(reports);
 }
 
 export async function getFaultReportById(id: string): Promise<FaultReport | null> {
@@ -169,7 +225,9 @@ export async function getFaultReportById(id: string): Promise<FaultReport | null
     return null;
   }
 
-  return mapFaultReport(snap.id, snap.data() as FirestoreFaultReportData);
+  const report = mapFaultReport(snap.id, snap.data() as FirestoreFaultReportData);
+  const enriched = await enrichWithUserInfo([report]);
+  return enriched[0];
 }
 
 export async function createFaultReport(input: CreateFaultReportInput): Promise<string> {

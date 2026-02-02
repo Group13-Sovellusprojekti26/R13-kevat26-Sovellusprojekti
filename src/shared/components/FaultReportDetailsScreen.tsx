@@ -153,6 +153,18 @@ export const FaultReportDetailsScreen: React.FC = () => {
           <Text style={styles.sectionLabel}>{t('faults.location')}</Text>
           <Text style={styles.sectionText}>{report.location}</Text>
 
+          {report.createdByName && (
+            <>
+              <Text style={styles.sectionLabel}>{t('faults.reportedBy')}</Text>
+              <Text style={styles.sectionText}>
+                {report.createdByName}
+                {report.createdByBuilding && ` (${t('faults.building')} ${report.createdByBuilding}`}
+                {report.createdByApartment && `, ${t('faults.apartment')} ${report.createdByApartment}`}
+                {(report.createdByBuilding || report.createdByApartment) && ')'}
+              </Text>
+            </>
+          )}
+
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <Text style={styles.sectionLabel}>{t('faults.urgency')}</Text>

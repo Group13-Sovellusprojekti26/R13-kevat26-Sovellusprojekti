@@ -10,6 +10,7 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { getAnnouncementPermissions } from '@/shared/types/announcementPermissions';
 import { useUserProfile } from '../hooks/useUserProfile';
 import type { HousingCompanyStackParamList } from '@/app/navigation/HousingCompanyStack';
+import type { MaintenanceStackParamList } from '@/app/navigation/MaintenanceStack';
 import { Announcement } from '@/data/models/Announcement';
 import { getAnnouncement, deleteAnnouncement } from '@/data/repositories/announcements.repo';
 import { haptic } from '@/shared/utils/haptics';
@@ -21,7 +22,7 @@ import { AnnouncementDateRange } from './components/AnnouncementDateRange';
 import { AnnouncementAttachments } from './components/AnnouncementAttachments';
 
 type AnnouncementDetailScreenRouteProp = RouteProp<
-  HousingCompanyStackParamList,
+  HousingCompanyStackParamList | MaintenanceStackParamList,
   'AnnouncementDetail'
 >;
 
@@ -30,6 +31,7 @@ type AnnouncementDetailScreenRouteProp = RouteProp<
  * Fetches announcement by ID from route params and displays read-only content.
  * Shows all announcement information including dates, times, publisher, type, and full text.
  * Provides edit and delete action buttons (conditionally visible based on permissions).
+ * Works with both HousingCompany and Maintenance stacks.
  * 
  * Responsibilities:
  * - Fetch announcement data from Firestore by ID
@@ -62,7 +64,7 @@ export const AnnouncementDetailScreen: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const route = useRoute<AnnouncementDetailScreenRouteProp>();
-  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList | MaintenanceStackParamList>>();
   const [announcement, setAnnouncement] = React.useState<Announcement | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
