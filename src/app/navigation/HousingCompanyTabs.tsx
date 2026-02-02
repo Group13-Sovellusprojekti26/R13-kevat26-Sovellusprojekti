@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { HousingCompanyStackParamList } from './HousingCompanyStack';
 import { HousingCompanyDashboardScreen } from '@/features/housingCompany/views/HousingCompanyDashboardScreen';
-import { ManageFaultReportsScreen } from '@/features/housingCompany/views/ManageFaultReportsScreen';
+import { FaultReportListScreen } from '@/shared/components/FaultReportListScreen';
 import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
 import { signOut } from '@/features/auth/services/auth.service';
 import { UserRole } from '@/data/models/enums';
@@ -87,7 +87,7 @@ export const HousingCompanyTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageFaultReports"
-        component={ManageFaultReportsScreen}
+        component={() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
         options={{
           title: t('housingCompany.dashboard.manageFaults'),
           headerTitleAlign: 'left',

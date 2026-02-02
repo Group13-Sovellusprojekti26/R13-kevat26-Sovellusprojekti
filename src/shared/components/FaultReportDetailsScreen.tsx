@@ -1,16 +1,16 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Pressable, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
 import { Text, Chip, ActivityIndicator } from 'react-native-paper';
 import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/shared/components/Screen';
 import { StatusActionBar } from '@/shared/components/StatusActionBar';
+import { MediaViewer } from '@/shared/components/MediaViewer';
 import { FaultReportStatus, UrgencyLevel, UserRole } from '@/data/models/enums';
 import { useFaultReportDetailsVM } from '@/shared/viewmodels/useFaultReportDetailsVM';
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
 import { getStatusLabelKey, StatusActionDefinition } from '@/shared/utils/faultReportStatusActions';
 import { useFaultReportListVM } from '@/features/resident/faultReports/viewmodels/useFaultReportListVM';
-import ImageViewer from 'react-native-image-zoom-viewer';
 
 type FaultReportDetailsRouteParams = {
   FaultReportDetails: { faultReportId: string };
@@ -91,10 +91,6 @@ export const FaultReportDetailsScreen: React.FC = () => {
   );
 
   const faultReportId = route.params?.faultReportId;
-  const viewerImages = useMemo(
-    () => (report?.imageUrls ?? []).map((url) => ({ url })),
-    [report?.imageUrls]
-  );
 
   useFocusEffect(
     useCallback(() => {
@@ -217,26 +213,12 @@ export const FaultReportDetailsScreen: React.FC = () => {
           </View>
         )}
       </View>
-      <Modal
-        transparent
+      <MediaViewer
+        imageUrls={report?.imageUrls ?? []}
         visible={viewerVisible}
-        animationType="fade"
-        onRequestClose={() => setViewerVisible(false)}
-      >
-        <View style={styles.viewerContainer}>
-          <ImageViewer
-            imageUrls={viewerImages}
-            index={viewerIndex}
-            enableSwipeDown
-            onSwipeDown={() => setViewerVisible(false)}
-            saveToLocalByLongPress={false}
-            renderIndicator={undefined}
-          />
-          <Pressable style={styles.viewerClose} onPress={() => setViewerVisible(false)}>
-            <Text style={styles.viewerCloseText}>✕</Text>
-          </Pressable>
-        </View>
-      </Modal>
+        onClose={() => setViewerVisible(false)}
+        initialIndex={viewerIndex}
+      />
     </Screen>
   );
 };
@@ -303,19 +285,5 @@ const styles = StyleSheet.create({
   actionBar: {
     paddingHorizontal: 16,
     paddingBottom: 16,
-  },
-  viewerContainer: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  viewerClose: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    padding: 8,
-  },
-  viewerCloseText: {
-    color: 'white',
-    fontSize: 24,
   },
 });

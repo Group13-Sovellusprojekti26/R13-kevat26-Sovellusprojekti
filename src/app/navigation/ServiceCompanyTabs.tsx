@@ -7,10 +7,8 @@ import { IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ServiceCompanyStackParamList } from './ServiceCompanyStack';
-import {
-  ServiceCompanyDashboardScreen,
-  ManageFaultReportsScreen,
-} from '@/features/serviceCompany/views';
+import { ServiceCompanyDashboardScreen } from '@/features/serviceCompany/views';
+import { FaultReportListScreen } from '@/shared/components/FaultReportListScreen';
 import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
 import { signOut } from '@/features/auth/services/auth.service';
 import { UserRole } from '@/data/models/enums';
@@ -89,7 +87,7 @@ export const ServiceCompanyTabs: React.FC = () => {
       />
       <Tab.Screen
         name="ManageFaultReports"
-        component={ManageFaultReportsScreen}
+        component={() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
         options={{
           title: t('serviceCompany.manageFaults'),
           headerTitleAlign: 'left',
