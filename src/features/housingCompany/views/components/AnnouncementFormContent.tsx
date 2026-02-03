@@ -115,6 +115,7 @@ export const AnnouncementFormContent: React.FC<AnnouncementFormContentProps> = (
   const { control, handleSubmit, formState: { errors }, watch, setValue } = form;
   const titleValue = watch('title');
   const contentValue = watch('content');
+  const contentCount = contentValue?.length ?? 0;
   const startDate = watch('startDate');
   const startTime = watch('startTime');
   const endDate = watch('endDate');
@@ -162,15 +163,33 @@ export const AnnouncementFormContent: React.FC<AnnouncementFormContentProps> = (
               onChangeText={onChange}
               error={errors.content?.message ? t(errors.content.message as any) : undefined}
               multiline
-              numberOfLines={6}
-              style={styles.field}
+              numberOfLines={8}
+              style={[styles.field, styles.contentInput]}
               placeholder={t('announcements.content')}
             />
           )}
         />
-        <Text variant="labelSmall" style={styles.counter}>
-          {(contentValue?.length || 0)}/{maxContentLength}
-        </Text>
+        <View style={styles.contentMetaRow}>
+          <Text style={[styles.contentMeta, { color: theme.colors.onSurfaceVariant }]}>
+            {t('faults.descriptionMinMax', {
+              min: MIN_CONTENT_LENGTH,
+              max: MAX_CONTENT_LENGTH,
+            })}
+          </Text>
+          <Text
+            style={[
+              styles.contentCount,
+              {
+                color:
+                  contentCount < MIN_CONTENT_LENGTH
+                    ? theme.colors.error
+                    : theme.colors.onSurfaceVariant,
+              },
+            ]}
+          >
+            {contentCount}/{maxContentLength}
+          </Text>
+        </View>
 
         {/* Type Selection */}
         <Text variant="labelLarge" style={styles.fieldLabel}>

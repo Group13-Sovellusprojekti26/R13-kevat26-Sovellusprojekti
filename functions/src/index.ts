@@ -184,10 +184,11 @@ export const uploadFaultReportImage = onCall(
     // Permission check: residents can only upload to own reports
     // Admins and property managers can upload to any report in their housing company
     const isAdmin = role === "admin";
-    const isPropertyManager = role === "property_manager" || role === "maintenance";
+    const isHousingCompany = role === "housing_company";
+    const isMaintenance = role === "maintenance" || role === "property_manager";
     const isOwnReport = reportData?.createdBy === uid;
 
-    if (!isAdmin && !isPropertyManager && !isOwnReport) {
+    if (!isAdmin && !isHousingCompany && !isMaintenance && !isOwnReport) {
       throw new HttpsError(
         "permission-denied",
         "You can only upload images to your own fault reports."

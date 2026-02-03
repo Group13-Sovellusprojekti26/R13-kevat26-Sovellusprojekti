@@ -8,7 +8,7 @@ export interface FaultReport {
   createdByApartment?: string; // Apartment number of the user who created the report
   createdByBuilding?: string; // Building identifier/number of the user
   apartmentId?: string;
-  buildingId: string;
+  buildingId?: string; // Optional for backwards compatibility with old data
   housingCompanyId: string;
   apartmentNumber?: string;
   title: string;
@@ -30,6 +30,7 @@ export interface CreateFaultReportInput {
   description: string;
   location: string;
   urgency: UrgencyLevel;
+  buildingId?: string; // Required for housing company/maintenance, auto-filled for residents
   apartmentNumber?: string;
   imageUris?: string[];
   allowMasterKeyAccess?: boolean;

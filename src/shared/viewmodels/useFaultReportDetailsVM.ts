@@ -39,7 +39,8 @@ export const useFaultReportDetailsVM = create<FaultReportDetailsVM>((set, get) =
   statusActions: [],
 
   loadReport: async (id: string) => {
-    set({ loading: true, error: null });
+    // Clear previous report immediately to prevent showing stale data
+    set({ loading: true, error: null, report: null, statusActions: [] });
     try {
       const report = await getFaultReportById(id);
       const role = get().userRole;

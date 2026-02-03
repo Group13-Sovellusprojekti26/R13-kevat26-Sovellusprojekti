@@ -1,17 +1,10 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useTranslation } from 'react-i18next';
-import { Alert, View, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { IconButton } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ResidentStackParamList } from './ResidentStack';
 import { ResidentDashboardScreen } from '../../features/resident/views/ResidentDashboardScreen';
 import { AnnouncementsScreen } from '../../features/housingCompany/views/AnnouncementsScreen';
 import { FaultReportListScreen } from '../../features/resident/faultReports/views/FaultReportListScreen';
 import { CreateFaultReportScreen } from '../../features/resident/faultReports/views/CreateFaultReportScreen';
-import { signOut } from '../../features/auth/services/auth.service';
+import { createRoleBasedTabs, TabConfig } from '@/shared/navigation/RoleBasedTabs';
 
 export type ResidentTabsParamList = {
   Dashboard: undefined;
@@ -20,155 +13,45 @@ export type ResidentTabsParamList = {
   CreateFaultReport: { faultReportId?: string } | undefined;
 };
 
-const Tab = createBottomTabNavigator<ResidentTabsParamList>();
-
 /**
- * Header actions component - extracted to properly use hooks
+ * Tab configuration for resident users
  */
-const HeaderActions: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-  const navigation = useNavigation<NativeStackNavigationProp<ResidentStackParamList>>();
-  return (
-    <View style={styles.headerActions}>
-      <IconButton
-        icon="cog-outline"
-        onPress={() => navigation.navigate('Settings')}
-      />
-      <IconButton
-        icon="logout"
-        onPress={onLogout}
-      />
-    </View>
-  );
-};
+const residentTabConfig: TabConfig<ResidentTabsParamList>[] = [
+  {
+    name: 'Dashboard',
+    component: ResidentDashboardScreen,
+    titleKey: 'resident.dashboard.title',
+    tabLabelKey: 'resident.dashboard.tabLabel',
+  },
+  {
+    name: 'Announcements',
+    component: AnnouncementsScreen,
+    titleKey: 'announcements.title',
+    tabLabelKey: 'announcements.title',
+  },
+  {
+    name: 'FaultReports',
+    component: FaultReportListScreen,
+    titleKey: 'faults.title',
+    tabLabelKey: 'faults.title',
+  },
+  {
+    name: 'CreateFaultReport',
+    component: CreateFaultReportScreen,
+    titleKey: 'faults.createTitle',
+    tabLabelKey: 'faults.createTitle',
+    dynamicTitle: (params, t) => {
+      const faultReportId = params?.faultReportId;
+      const isEditMode = Boolean(faultReportId);
+      return isEditMode ? t('faults.editTitle') : t('faults.createTitle');
+    },
+  },
+];
 
 /**
  * Bottom tab navigation for resident users
  */
-export const ResidentTabs: React.FC = () => {
-  const { t } = useTranslation();
-
-  const handleLogout = () => {
-    Alert.alert(
-      t('common.logout'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.logout'),
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
-  };
-
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#0D9488',
-        tabBarInactiveTintColor: '#666',
-      }}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={ResidentDashboardScreen}
-        options={{
-          title: t('resident.dashboard.title'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('resident.dashboard.tabLabel'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home" size={size} color={color} />
-          ),
-          headerRight: () => <HeaderActions onLogout={handleLogout} />,
-        }}
-      />
-      <Tab.Screen
-        name="Announcements"
-        component={AnnouncementsScreen}
-        options={{
-          title: t('announcements.title'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('announcements.title'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bell" size={size} color={color} />
-          ),
-          headerRight: () => <HeaderActions onLogout={handleLogout} />,
-        }}
-      />
-      <Tab.Screen
-        name="FaultReports"
-        component={FaultReportListScreen}
-        options={{
-          title: t('faults.title'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('faults.title'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="clipboard-list" size={size} color={color} />
-          ),
-          headerRight: () => <HeaderActions onLogout={handleLogout} />,
-        }}
-      />
-      <Tab.Screen
-        name="CreateFaultReport"
-        component={CreateFaultReportScreen}
-        options={({ route }) => {
-          const faultReportId = route.params?.faultReportId;
-          const isEditMode = Boolean(faultReportId);
-          const title = isEditMode ? t('faults.editTitle') : t('faults.createTitle');
-          
-          return {
-            title,
-            headerTitleAlign: 'left',
-            headerTitleStyle: {
-              fontSize: 18,
-            },
-            headerTitleContainerStyle: {
-              paddingRight: 96,
-            },
-            headerRightContainerStyle: {
-              paddingRight: 4,
-            },
-            tabBarLabel: t('faults.createTitle'),
-            tabBarIcon: ({ color, size }) => (
-              <MaterialCommunityIcons name="plus-circle" size={size} color={color} />
-            ),
-            headerRight: () => <HeaderActions onLogout={handleLogout} />,
-          };
-        }}
-      />
-    </Tab.Navigator>
-  );
-};
-
-const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: 'row',
-  },
+export const ResidentTabs = createRoleBasedTabs<ResidentStackParamList, ResidentTabsParamList>({
+  tabs: residentTabConfig,
+  stackParamList: {} as ResidentStackParamList,
 });

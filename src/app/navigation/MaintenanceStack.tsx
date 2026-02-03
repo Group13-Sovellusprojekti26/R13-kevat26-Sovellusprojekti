@@ -7,10 +7,13 @@ import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetails
 import { CreateAnnouncementScreen } from '@/features/housingCompany/views/CreateAnnouncementScreen';
 import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
 import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
+import { MaintenanceCreateFaultReportScreen } from '@/features/maintenance/views/MaintenanceCreateFaultReportScreen';
 
 export type MaintenanceStackParamList = {
   Tabs: undefined;
   FaultReportDetails: { faultReportId: string };
+  CreateOwnFaultReport: { faultReportId?: string };
+  OwnFaultReportDetails: { faultReportId: string };
   Settings: undefined;
   CreateAnnouncement: undefined;
   EditAnnouncement: { announcementId: string };
@@ -41,6 +44,24 @@ export const MaintenanceStack: React.FC = () => {
           headerShown: true,
           title: t('faults.detailTitle'),
           headerBackTitle: t('faults.title'),
+        }}
+      />
+      <Stack.Screen
+        name="CreateOwnFaultReport"
+        component={MaintenanceCreateFaultReportScreen}
+        options={({ route }) => ({
+          headerShown: true,
+          title: route.params?.faultReportId ? t('faults.editTitle') : t('faults.createTitle'),
+          headerBackTitle: t('maintenance.dashboard.ownFaultsTab'),
+        })}
+      />
+      <Stack.Screen
+        name="OwnFaultReportDetails"
+        component={FaultReportDetailsScreen}
+        options={{
+          headerShown: true,
+          title: t('faults.detailTitle'),
+          headerBackTitle: t('maintenance.dashboard.ownFaultsTab'),
         }}
       />
       <Stack.Screen 

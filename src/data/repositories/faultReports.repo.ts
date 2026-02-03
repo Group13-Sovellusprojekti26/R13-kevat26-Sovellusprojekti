@@ -93,17 +93,20 @@ async function enrichWithUserInfo(reports: FaultReport[]): Promise<FaultReport[]
   });
 }
 
-const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport => {
+const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport | null => {
+  // Required fields; older documents may miss some of these
   if (
     !data.createdAt ||
     (!data.createdBy && !data.createdByUserId) ||
-    !data.buildingId ||
     !data.title ||
     !data.description ||
     !data.status ||
-    !data.urgency
+    !data.urgency ||
+    !data.housingCompanyId
   ) {
-    throw new AppError('faults.missingRequiredFields', 'fault-report/missing-fields');
+    // Skip malformed documents instead of throwing to allow list views to load
+    logError(new Error('fault-report/missing-fields'), 'Skip malformed fault report');
+    return null;
   }
 
   const createdAt = timestampToDate(data.createdAt);
@@ -155,7 +158,9 @@ export async function getFaultReportsByUser(): Promise<FaultReport[]> {
   );
 
   const snapshot = await getDocs(reportsQuery);
-  const reports = snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs
+    .map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData))
+    .filter((r): r is FaultReport => r !== null);
   return enrichWithUserInfo(reports);
 }
 
@@ -182,22 +187,10 @@ export async function getFaultReportsForRole(): Promise<FaultReport[]> {
           orderBy('createdAt', 'desc')
         );
 
-  console.log('Fault report query', {
-    role: userProfile.role,
-    housingCompanyId: userProfile.housingCompanyId,
-    scope,
-    filters:
-      scope === 'byUser'
-        ? [
-            `createdByUserId == ${userProfile.id}`,
-            `housingCompanyId == ${userProfile.housingCompanyId}`,
-          ]
-        : [`housingCompanyId == ${userProfile.housingCompanyId}`],
-    orderBy: 'createdAt desc',
-  });
-
   const snapshot = await getDocs(reportsQuery);
-  const reports = snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs
+    .map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData))
+    .filter((r): r is FaultReport => r !== null);
   return enrichWithUserInfo(reports);
 }
 
@@ -215,7 +208,9 @@ export async function getFaultReportsByBuilding(): Promise<FaultReport[]> {
   );
 
   const snapshot = await getDocs(reportsQuery);
-  const reports = snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs
+    .map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData))
+    .filter((r): r is FaultReport => r !== null);
   return enrichWithUserInfo(reports);
 }
 
@@ -226,6 +221,9 @@ export async function getFaultReportById(id: string): Promise<FaultReport | null
   }
 
   const report = mapFaultReport(snap.id, snap.data() as FirestoreFaultReportData);
+  if (!report) {
+    return null;
+  }
   const enriched = await enrichWithUserInfo([report]);
   return enriched[0];
 }
@@ -241,14 +239,20 @@ export async function createFaultReport(input: CreateFaultReportInput): Promise<
     throw new AppError('profile.notFound', 'profile/not-found');
   }
 
+  // Use buildingId from input if provided (housing company/maintenance), otherwise from user profile (residents)
+  const buildingId = input.buildingId ?? userProfile.buildingId;
+  if (!buildingId) {
+    throw new AppError('faults.buildingIdRequired', 'fault-report/building-required');
+  }
+
   const docRef = await addDoc(collection(db, 'faultReports'), {
     title: input.title,
     description: input.description,
     location: input.location ?? '',
     urgency: input.urgency,
     apartmentNumber: input.apartmentNumber ?? null,
-    apartmentId: userProfile.apartmentNumber ?? null,
-    buildingId: userProfile.buildingId,
+    apartmentId: input.apartmentNumber ?? userProfile.apartmentNumber ?? null,
+    buildingId,
     housingCompanyId: userProfile.housingCompanyId,
     createdBy: userProfile.id,
     createdByUserId: userProfile.id,

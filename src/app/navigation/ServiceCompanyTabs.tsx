@@ -1,17 +1,9 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useTranslation } from 'react-i18next';
-import { Alert, View, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { IconButton } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { ServiceCompanyStackParamList } from './ServiceCompanyStack';
 import { ServiceCompanyDashboardScreen } from '@/features/serviceCompany/views';
 import { FaultReportListScreen } from '@/shared/components/FaultReportListScreen';
 import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
-import { signOut } from '@/features/auth/services/auth.service';
-import { UserRole } from '@/data/models/enums';
+import { createRoleBasedTabs, TabConfig } from '@/shared/navigation/RoleBasedTabs';
 
 export type ServiceCompanyTabsParamList = {
   Dashboard: undefined;
@@ -19,129 +11,34 @@ export type ServiceCompanyTabsParamList = {
   ManageAnnouncements: undefined;
 };
 
-const Tab = createBottomTabNavigator<ServiceCompanyTabsParamList>();
-
 /**
- * Header actions component - extracted to properly use hooks
+ * Tab configuration for service company users
  */
-const HeaderActions: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-  const navigation = useNavigation<NativeStackNavigationProp<ServiceCompanyStackParamList>>();
-  return (
-    <View style={styles.headerActions}>
-      <IconButton
-        icon="cog-outline"
-        onPress={() => navigation.navigate('Settings')}
-      />
-      <IconButton
-        icon="logout"
-        onPress={onLogout}
-      />
-    </View>
-  );
-};
+const serviceCompanyTabConfig: TabConfig<ServiceCompanyTabsParamList>[] = [
+  {
+    name: 'Dashboard',
+    component: ServiceCompanyDashboardScreen,
+    titleKey: 'serviceCompany.dashboard',
+    tabLabelKey: 'serviceCompany.dashboard',
+  },
+  {
+    name: 'ManageFaultReports',
+    children: () => <FaultReportListScreen detailScreenName="FaultReportDetails" />,
+    titleKey: 'faults.title',
+    tabLabelKey: 'serviceCompany.manageFaultsTab',
+  },
+  {
+    name: 'ManageAnnouncements',
+    children: () => <AnnouncementsScreen />,
+    titleKey: 'announcements.title',
+    tabLabelKey: 'serviceCompany.manageAnnouncementsTab',
+  },
+];
 
 /**
  * Bottom tab navigation for service company users
  */
-export const ServiceCompanyTabs: React.FC = () => {
-  const { t } = useTranslation();
-
-  const handleLogout = () => {
-    Alert.alert(
-      t('common.logout'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.logout'),
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
-  };
-
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#0D9488',
-        tabBarInactiveTintColor: '#666',
-      }}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={ServiceCompanyDashboardScreen}
-        options={{
-          title: t('serviceCompany.dashboard'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('serviceCompany.dashboard'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home" size={size} color={color} />
-          ),
-          headerRight: () => <HeaderActions onLogout={handleLogout} />,
-        }}
-      />
-      <Tab.Screen
-        name="ManageFaultReports"
-        options={{
-          title: t('faults.title'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('serviceCompany.manageFaultsTab'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="wrench" size={size} color={color} />
-          ),
-          headerRight: () => <HeaderActions onLogout={handleLogout} />,
-        }}
-      >
-        {() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
-      </Tab.Screen>
-      <Tab.Screen
-        name="ManageAnnouncements"
-        options={{
-          title: t('announcements.title'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('serviceCompany.manageAnnouncementsTab'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bullhorn" size={size} color={color} />
-          ),
-          headerRight: () => <HeaderActions onLogout={handleLogout} />,
-        }}
-      >
-        {() => <AnnouncementsScreen />}
-      </Tab.Screen>
-    </Tab.Navigator>
-  );
-};
-
-const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: 'row',
-  },
+export const ServiceCompanyTabs = createRoleBasedTabs<ServiceCompanyStackParamList, ServiceCompanyTabsParamList>({
+  tabs: serviceCompanyTabConfig,
+  stackParamList: {} as ServiceCompanyStackParamList,
 });

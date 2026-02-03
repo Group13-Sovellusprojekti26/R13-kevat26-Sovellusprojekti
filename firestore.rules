@@ -45,8 +45,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['buildingId', 'title', 'description', 'status', 'createdBy', 'housingCompanyId', 'createdAt', 'updatedAt']);
       
       // Update: users can update their own report details only
-      // Allow ONLY description, imageUrls, allowMasterKeyAccess, hasPets when status is created/open
-      // Block status/timestamp/comment updates from client
+      // Allow ONLY description, imageUrls, allowMasterKeyAccess, hasPets, updatedAt when status is created/open
+      // Block status/comment updates from client
       allow update: if isAuthenticated()
         && resource.data.createdBy == request.auth.uid
         && request.resource.data.housingCompanyId == resource.data.housingCompanyId
@@ -56,11 +56,11 @@ service cloud.firestore {
           'description',
           'imageUrls',
           'allowMasterKeyAccess',
-          'hasPets'
+          'hasPets',
+          'updatedAt'
         ])
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'status',
-          'updatedAt',
           'updatedBy',
           'resolvedAt',
           'comment',

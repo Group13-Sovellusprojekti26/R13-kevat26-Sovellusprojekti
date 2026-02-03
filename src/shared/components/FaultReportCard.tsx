@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Image, Pressable } from 'react-native';
 import { Text, Chip, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { FaultReport } from '@/data/models/FaultReport';
 import { getStatusLabelKey } from '@/shared/utils/faultReportStatusActions';
 import { FaultReportStatus } from '@/data/models/enums';
-import { MediaViewer } from './MediaViewer';
 import { GenericContentCard } from './GenericContentCard';
 
 type FaultReportCardProps = {
@@ -23,11 +22,9 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
   const canEdit =
     Boolean(isResident) &&
     (report.status === FaultReportStatus.OPEN || report.status === FaultReportStatus.CREATED);
-  const [viewerVisible, setViewerVisible] = useState(false);
 
   return (
-    <>
-      <GenericContentCard
+    <GenericContentCard
         item={report}
         onPress={onPress}
         renderHeader={(item) => (
@@ -61,14 +58,7 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
         )}
         renderThumbnail={(item) =>
           thumbnailUrl ? (
-            <Pressable
-              onPress={(event) => {
-                event.stopPropagation();
-                setViewerVisible(true);
-              }}
-            >
-              <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
-            </Pressable>
+            <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
           ) : (
             <View style={[styles.placeholder, { backgroundColor: theme.colors.primaryContainer }]}>
               <MaterialCommunityIcons
@@ -108,14 +98,7 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
             {item.createdAt.toLocaleDateString()}
           </Text>
         )}
-      />
-      <MediaViewer
-        imageUrls={report.imageUrls ?? []}
-        visible={viewerVisible}
-        onClose={() => setViewerVisible(false)}
-        initialIndex={0}
-      />
-    </>
+    />
   );
 };
 

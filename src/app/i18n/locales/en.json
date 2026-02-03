@@ -154,7 +154,7 @@
       "cancelled": "Cancelled"
     },
     "descriptionRequired": "Description is required",
-    "descriptionMinLength": "Description must be at least {{min}} characters",
+    "descriptionMinLength": "Description must be at least 10 characters",
     "descriptionMaxLength": "Description must be at most {{max}} characters",
     "descriptionMinMax": "Min {{min}} / Max {{max}}",
     "descriptionCount": "{{current}}/{{max}}",
@@ -162,6 +162,12 @@
     "imageProcessingFailed": "Image compression failed. Please try again.",
     "locationRequired": "Location is required",
     "titleRequired": "Title is required",
+    "buildingId": "Building",
+    "buildingIdRequired": "Building is required",
+    "buildingIdPlaceholder": "e.g. A, B, 1",
+    "apartmentNumber": "Apartment",
+    "apartmentNumberRequired": "Apartment is required",
+    "apartmentNumberPlaceholder": "e.g. A 1, B 12",
     "createSuccess": "Fault report submitted",
     "createError": "Failed to submit fault report",
     "updateSuccess": "Fault report updated",
@@ -256,7 +262,6 @@
     "attachmentLimit": "Attachment limit reached",
     "maxAttachmentsReached": "Maximum {{max}} attachments per announcement",
     "addAttachment": "Add attachment",
-    "newAttachments": "New attachments",
     "attachmentSelectionFailed": "Failed to select attachment"
   },
   "common": {
@@ -382,6 +387,7 @@
       "announcements": "Announcements",
       "manageFaults": "Manage Fault Reports",
       "manageFaultsTab": "Fault Reports",
+      "ownFaultsTab": "My Reports",
       "manageAnnouncements": "Manage Announcements",
       "manageAnnouncementsTab": "Announcements",
       "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
@@ -478,12 +484,14 @@
   "maintenance": {
     "dashboard": {
       "title": "Property Management",
+      "tabLabel": "Home",
       "subtitle": "Welcome to TaloFix",
       "welcome": "Welcome!",
       "welcomeWithName": "Welcome, {{name}}!",
       "welcomeMessage": "From here you can manage fault reports and announcements.",
       "manageFaults": "Manage Fault Reports",
       "manageFaultsTab": "Fault Reports",
+      "ownFaultsTab": "My Reports",
       "manageAnnouncements": "Manage Announcements",
       "manageAnnouncementsTab": "Announcements",
       "faultReportsComingSoon": "Fault report management coming soon. In the future, you will be able to view and manage all fault reports here.",
