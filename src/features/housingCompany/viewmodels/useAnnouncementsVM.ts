@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { DocumentSnapshot } from 'firebase/firestore';
 import {
   getActiveAnnouncementsByHousingCompany,
@@ -13,6 +14,7 @@ import { AnnouncementType } from '@/data/models/enums';
 import { AppError } from '@/shared/utils/errors';
 import { useAnnouncementAttachments } from '../hooks/useAnnouncementAttachments';
 import type { UploadAttachmentParams, UploadAttachmentResponse } from '@/shared/types/announcementAttachments.types';
+import { createZustandStorage, STORAGE_KEYS } from '@/shared/utils/zustandStorage';
 
 /**
  * State interface for announcements view model using Zustand.
@@ -56,6 +58,18 @@ interface AnnouncementsState {
   expiredLastDoc: DocumentSnapshot | null;
   pageLimit: number;
   
+  // Hydration state for persist
+  _hasHydrated: boolean;
+}
+
+/** Subset of state that gets persisted to AsyncStorage */
+interface PersistedAnnouncementsState {
+  announcements: Announcement[];
+  showExpired: boolean;
+  selectedTypes: AnnouncementType[];
+}
+
+interface AnnouncementsActions {
   /**
    * Reset announcements state and fetch initial page of active announcements.
    * Clears all pagination cursors and error state.
@@ -275,7 +289,16 @@ interface AnnouncementsState {
    * @returns {string[]} IDs of removed attachments
    */
   getRemoveAttachmentIds: (originalAttachments: any[], remainingAttachments: any[]) => string[];
+  
+  /**
+   * Set hydration state after AsyncStorage rehydration.
+   * @param {boolean} state - Whether hydration is complete
+   */
+  setHasHydrated: (state: boolean) => void;
 }
+
+/** Combined type for the full Zustand store */
+type AnnouncementsVM = AnnouncementsState & AnnouncementsActions;
 
 /**
  * Zustand store hook for managing announcements state and operations.
@@ -303,29 +326,34 @@ interface AnnouncementsState {
  *   />
  * );
  */
-export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
-  announcements: [],
-  showExpired: false,
-  selectedTypes: Object.values(AnnouncementType),
-  loading: false,
-  loadingMore: false,
-  refreshing: false,
-  hasMore: true,
-  error: null,
-  activeLastDoc: null,
-  expiredLastDoc: null,
-  pageLimit: 10,
+export const useAnnouncementsVM = create<AnnouncementsVM>()(
+  persist(
+    (set, get) => ({
+      announcements: [],
+      showExpired: false,
+      selectedTypes: Object.values(AnnouncementType),
+      loading: false,
+      loadingMore: false,
+      refreshing: false,
+      hasMore: true,
+      error: null,
+      activeLastDoc: null,
+      expiredLastDoc: null,
+      pageLimit: 10,
+      _hasHydrated: false,
 
-  /**
-   * Fetch initial announcements (reset pagination)
+      /**
+       * Fetch initial announcements (reset pagination)
    * Loads first page of active or expired announcements
    * Uses silent refresh if data already exists to prevent UI flash
    */
   fetchAnnouncements: async (housingCompanyId: string) => {
     const hasExistingData = get().announcements.length > 0;
+    const hasHydrated = get()._hasHydrated;
     
     // Keep existing data visible during refresh if we have data
-    if (hasExistingData) {
+    // Also don't show loading if hydration hasn't completed yet (cached data coming)
+    if (hasExistingData || !hasHydrated) {
       set({ loading: false, error: null });
     } else {
       set({ loading: true, error: null, showExpired: false, announcements: [], activeLastDoc: null, expiredLastDoc: null });
@@ -648,4 +676,22 @@ export const useAnnouncementsVM = create<AnnouncementsState>((set, get) => ({
   
   getRemoveAttachmentIds: (originalAttachments: any[], remainingAttachments: any[]) =>
     useAnnouncementAttachments.getState().getRemoveAttachmentIds(originalAttachments, remainingAttachments),
-}));
+  
+  setHasHydrated: (state: boolean) => set({ _hasHydrated: state }),
+    }),
+    {
+      name: STORAGE_KEYS.ANNOUNCEMENTS,
+      storage: createZustandStorage<PersistedAnnouncementsState>(),
+      // Only persist announcements data, not pagination cursors or transient states
+      // DocumentSnapshot cannot be serialized to JSON
+      partialize: (state): PersistedAnnouncementsState => ({
+        announcements: state.announcements,
+        showExpired: state.showExpired,
+        selectedTypes: state.selectedTypes,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    }
+  )
+);

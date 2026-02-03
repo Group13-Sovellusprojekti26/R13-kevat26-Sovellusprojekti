@@ -31,7 +31,7 @@ import { listScreenDefaults } from '@/shared/config/listScreenConfig';
  */
 interface AnnouncementsListScreenProps {
   permissions: AnnouncementPermissions;
-  housingCompanyId: string;
+  housingCompanyId?: string;
   onCreatePress?: () => void;
   onEditPress?: (announcement: Announcement) => void;
   onDeletePress?: (announcement: Announcement) => void;
@@ -153,6 +153,8 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     return t('announcements.noAnnouncements');
   }, [showExpired, permissions.showExpiredToggle, t]);
 
+  const hasHousingCompanyId = Boolean(housingCompanyId);
+
   return (
     <>
       <GenericListScreen
@@ -163,8 +165,14 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
         isRefreshing={refreshing}
         isLoadingMore={loadingMore}
         hasMore={hasMore}
-        onRefresh={() => refresh(housingCompanyId)}
-        onEndReached={() => loadMore(housingCompanyId)}
+        onRefresh={() => {
+          if (!hasHousingCompanyId || !housingCompanyId) return;
+          refresh(housingCompanyId);
+        }}
+        onEndReached={() => {
+          if (!hasHousingCompanyId || !housingCompanyId) return;
+          loadMore(housingCompanyId);
+        }}
         config={{
           ...listScreenDefaults,
           headerComponent: permissions.showCreateButton ? (

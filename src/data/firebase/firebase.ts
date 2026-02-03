@@ -1,8 +1,10 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { 
-  getAuth,
+  initializeAuth,
+  getReactNativePersistence,
   Auth,
 } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getFunctions, Functions } from 'firebase/functions';
@@ -18,9 +20,11 @@ const firebaseConfig = {
 
 const app: FirebaseApp = initializeApp(firebaseConfig);
 
-// Initialize Auth - use default persistence (works in React Native)
-// AsyncStorage persistence causes token propagation issues with httpsCallable
-export const auth: Auth = getAuth(app);
+// Initialize Auth with React Native AsyncStorage persistence
+// This keeps the user logged in even after closing the app
+export const auth: Auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+});
 
 export const db: Firestore = getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);
