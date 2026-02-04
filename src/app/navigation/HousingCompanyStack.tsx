@@ -13,6 +13,7 @@ import { CreateAnnouncementScreen } from '@/features/housingCompany/views/Create
 import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
 import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
 import { HCCreateFaultReportScreen } from '@/features/housingCompany/views/HCCreateFaultReportScreen';
+import { StatisticsScreen } from '@/features/housingCompany/views/StatisticsScreen';
 
 export type HousingCompanyStackParamList = {
   Tabs: undefined;
@@ -28,6 +29,7 @@ export type HousingCompanyStackParamList = {
   CreateAnnouncement: undefined;
   EditAnnouncement: { announcementId: string };
   AnnouncementDetail: { announcementId: string };
+  Statistics: undefined;
 };
 
 const Stack = createNativeStackNavigator<HousingCompanyStackParamList>();
@@ -154,6 +156,15 @@ export const HousingCompanyStack: React.FC = () => {
           headerShown: true,
           title: t('announcements.detailTitle'),
           headerBackTitle: t('announcements.announcements'),
+        }}
+      />
+      <Stack.Screen 
+        name="Statistics" 
+        component={StatisticsScreen}
+        options={{
+          headerShown: true,
+          title: t('housingCompany.statistics.title'),
+          headerBackTitle: t('common.back'),
         }}
       />
     </Stack.Navigator>

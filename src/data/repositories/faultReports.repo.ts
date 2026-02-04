@@ -259,6 +259,11 @@ export async function createFaultReport(input: CreateFaultReportInput): Promise<
     throw new AppError('faults.buildingIdRequired', 'fault-report/building-required');
   }
 
+  // Determine reporter info for display: use form input if provided, otherwise from user profile
+  const createdByName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || userProfile.housingCompanyName || '';
+  const createdByBuilding = input.buildingId ?? userProfile.buildingId ?? undefined;
+  const createdByApartment = input.apartmentNumber ?? userProfile.apartmentNumber ?? undefined;
+
   const docRef = await addDoc(collection(db, 'faultReports'), {
     title: input.title,
     description: input.description,
@@ -270,6 +275,9 @@ export async function createFaultReport(input: CreateFaultReportInput): Promise<
     housingCompanyId: userProfile.housingCompanyId,
     createdBy: userProfile.id,
     createdByUserId: userProfile.id,
+    createdByName,
+    createdByBuilding,
+    createdByApartment,
     status: FaultReportStatus.OPEN,
     imageUrls: [],
     createdAt: serverTimestamp(),
