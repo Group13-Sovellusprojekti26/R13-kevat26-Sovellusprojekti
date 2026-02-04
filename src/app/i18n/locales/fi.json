@@ -88,6 +88,12 @@
     "closeAction": "Peruuta",
     "addImage": "Lisää kuva",
     "images": "Kuvat",
+    "workLogs": {
+      "title": "Huoltokirjaukset",
+      "placeholder": "Kirjoita huoltokirjaus...",
+      "add": "Lisää kirjaus",
+      "empty": "Ei kirjauksia"
+    },
     "deleteImage": "Poista kuva",
     "deleteImageConfirm": "Haluatko varmasti poistaa tämän kuvan?",
     "urgent": "Kiireellinen",
@@ -130,7 +136,9 @@
       "markCompleted": "Merkitse valmiiksi",
       "markIncomplete": "Merkitse keskeneräiseksi",
       "markNotPossible": "Merkitse mahdottomaksi",
-      "cancel": "Peruuta ilmoitus"
+      "cancel": "Peruuta ilmoitus",
+      "showMore": "Näytä lisää toimintoja",
+      "hideMore": "Piilota toiminnot"
     },
     "statusErrorPermission": "Sinulla ei ole oikeutta muuttaa vikailmoituksen tilaa.",
     "statusErrorTransition": "Tilaa ei voi vaihtaa tässä vaiheessa.",
@@ -520,6 +528,7 @@
     "welcomeBack": "Tervetuloa takaisin",
     "dashboardSubtitle": "Täältä voit hallita vikailmoituksia",
     "yourInfo": "Tietosi",
+    "name": "Nimi",
     "statistics": "Tilastot",
     "openFaults": "Avoimet vikailmoitukset",
     "completedFaults": "Valmiit vikailmoitukset"

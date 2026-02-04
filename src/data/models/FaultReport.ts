@@ -1,5 +1,16 @@
 import { FaultReportStatus, UrgencyLevel } from './enums';
 
+/**
+ * Represents a work log entry made by service company personnel
+ */
+export interface WorkLog {
+  id: string;
+  content: string;
+  createdAt: Date;
+  createdBy: string;
+  createdByName: string;
+}
+
 export interface FaultReport {
   id: string;
   userId: string;
@@ -23,6 +34,7 @@ export interface FaultReport {
   assignedTo?: string;
   allowMasterKeyAccess?: boolean;
   hasPets?: boolean;
+  workLogs?: WorkLog[];
 }
 
 export interface CreateFaultReportInput {

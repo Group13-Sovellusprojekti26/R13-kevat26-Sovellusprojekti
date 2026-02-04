@@ -86,6 +86,12 @@
     "closeAction": "Cancel",
     "addImage": "Add image",
     "images": "Images",
+    "workLogs": {
+      "title": "Work Logs",
+      "placeholder": "Write a work log entry...",
+      "add": "Add entry",
+      "empty": "No work logs"
+    },
     "deleteImage": "Remove image",
     "deleteImageConfirm": "Are you sure you want to remove this image?",
     "urgent": "Urgent",
@@ -128,7 +134,9 @@
       "markCompleted": "Mark completed",
       "markIncomplete": "Mark incomplete",
       "markNotPossible": "Mark not possible",
-      "cancel": "Cancel report"
+      "cancel": "Cancel report",
+      "showMore": "Show more actions",
+      "hideMore": "Hide actions"
     },
     "statusErrorPermission": "You do not have permission to change the fault report status.",
     "statusErrorTransition": "The status cannot be changed at this time.",
@@ -517,6 +525,7 @@
     "welcomeBack": "Welcome back",
     "dashboardSubtitle": "From here you can manage fault reports",
     "yourInfo": "Your Information",
+    "name": "Name",
     "statistics": "Statistics",
     "openFaults": "Open Fault Reports",
     "completedFaults": "Completed Fault Reports"

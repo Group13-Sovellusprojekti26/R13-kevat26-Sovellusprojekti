@@ -17,7 +17,7 @@ import {
 import { AppError, logError } from '../../shared/utils/errors';
 import { timestampToDate } from '../../shared/utils/firebase';
 import { functions, db } from '../firebase/firebase';
-import { FaultReport, CreateFaultReportInput } from '../models/FaultReport';
+import { FaultReport, CreateFaultReportInput, WorkLog } from '../models/FaultReport';
 import { FaultReportStatus, UrgencyLevel, UserRole } from '../models/enums';
 import { getCurrentUser } from '../../features/auth/services/auth.service';
 import { getUserProfile } from './users.repo';
@@ -44,6 +44,13 @@ interface FirestoreFaultReportData {
   assignedTo?: string;
   allowMasterKeyAccess?: boolean;
   hasPets?: boolean;
+  workLogs?: Array<{
+    id: string;
+    content: string;
+    createdAt: Timestamp;
+    createdBy: string;
+    createdByName: string;
+  }>;
 }
 
 /**
@@ -141,6 +148,13 @@ const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport
     assignedTo: data.assignedTo,
     allowMasterKeyAccess: data.allowMasterKeyAccess,
     hasPets: data.hasPets,
+    workLogs: data.workLogs?.map(log => ({
+      id: log.id,
+      content: log.content,
+      createdAt: timestampToDate(log.createdAt) ?? new Date(),
+      createdBy: log.createdBy,
+      createdByName: log.createdByName,
+    })) ?? [],
   };
 };
 
@@ -385,6 +399,33 @@ export async function deleteFaultReport(id: string): Promise<void> {
   }
 
   await deleteDoc(reportRef);
+}
+
+/**
+ * Adds a work log entry to a fault report.
+ * Only accessible by service company role via Cloud Function.
+ */
+export async function addWorkLog(faultReportId: string, content: string): Promise<void> {
+  const callable = httpsCallable<
+    { faultReportId: string; content: string },
+    { ok: boolean }
+  >(functions, 'addWorkLog');
+
+  await callable({ faultReportId, content });
+}
+
+/**
+ * Deletes a work log entry from a fault report.
+ * Only accessible by service company role via Cloud Function.
+ * Users can only delete their own work logs.
+ */
+export async function deleteWorkLog(faultReportId: string, workLogId: string): Promise<void> {
+  const callable = httpsCallable<
+    { faultReportId: string; workLogId: string },
+    { ok: boolean }
+  >(functions, 'deleteWorkLog');
+
+  await callable({ faultReportId, workLogId });
 }
 
 async function uploadImages(dataUrls: string[], reportId: string, startIndex: number): Promise<string[]> {

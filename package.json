@@ -7,7 +7,8 @@
     "start:clean": "expo start -c",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "node scripts/patch-expo-haptics-tsconfig.cjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@types/react": "~19.1.0",
     "@types/react-native": "^0.72.8",
+    "expo-module-scripts": "^5.0.8",
     "firebase-tools": "^15.4.0",
     "typescript": "~5.9.2"
   },

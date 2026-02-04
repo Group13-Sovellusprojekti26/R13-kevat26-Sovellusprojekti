@@ -230,6 +230,162 @@ export const uploadFaultReportImage = onCall(
 );
 
 /**
+ * Adds a work log entry to a fault report.
+ * Only accessible by service company role.
+ * Work logs are visible to all parties but can only be created by service company.
+ *
+ * @param {string} faultReportId - Fault report document ID
+ * @param {string} content - Work log content (e.g., "Leaking faucet repaired")
+ * @returns {boolean} ok - Success indicator
+ */
+export const addWorkLog = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {housingCompanyId, role} = await getUserProfile(uid);
+
+    // Only service company can add work logs
+    assertAllowedRole(role, ["service_company"]);
+
+    const {faultReportId, content} = request.data || {};
+    if (
+      typeof faultReportId !== "string" ||
+      typeof content !== "string" ||
+      content.trim().length === 0
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    const docRef = db.collection("faultReports").doc(faultReportId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Fault report not found.");
+    }
+    const report = snap.data();
+
+    // Check housing company match
+    if (report?.housingCompanyId !== housingCompanyId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Cross-company access blocked."
+      );
+    }
+
+    // Get user name for the work log
+    const {firstName, lastName} = await getUserNameFromProfile(uid);
+    const createdByName = `${firstName} ${lastName}`.trim() || "Huolto";
+
+    // Create the work log entry
+    const workLogEntry = {
+      id: db.collection("_").doc().id, // Generate unique ID
+      content: content.trim(),
+      createdAt: admin.firestore.Timestamp.now(),
+      createdBy: uid,
+      createdByName,
+    };
+
+    // Add to workLogs array (create if doesn't exist)
+    try {
+      // First check if workLogs field exists, if not initialize it
+      const currentData = snap.data();
+      if (!currentData?.workLogs) {
+        await docRef.update({
+          workLogs: [workLogEntry],
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } else {
+        await docRef.update({
+          workLogs: admin.firestore.FieldValue.arrayUnion(workLogEntry),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (error: unknown) {
+      console.error("Add work log error:", error);
+      throw new HttpsError("internal", "Failed to add work log.");
+    }
+
+    return {ok: true};
+  }
+);
+
+/**
+ * Deletes a work log entry from a fault report.
+ * Only accessible by service company role.
+ * Users can only delete their own work logs.
+ *
+ * @param {string} faultReportId - Fault report document ID
+ * @param {string} workLogId - Work log entry ID to delete
+ * @returns {boolean} ok - Success indicator
+ */
+export const deleteWorkLog = onCall(
+  {region: "europe-west1"},
+  async (request) => {
+    const uid = assertAuth(request);
+    const {housingCompanyId, role} = await getUserProfile(uid);
+
+    // Only service company can delete work logs
+    assertAllowedRole(role, ["service_company"]);
+
+    const {faultReportId, workLogId} = request.data || {};
+    if (
+      typeof faultReportId !== "string" ||
+      typeof workLogId !== "string"
+    ) {
+      throw new HttpsError("invalid-argument", "Missing required fields.");
+    }
+
+    const docRef = db.collection("faultReports").doc(faultReportId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new HttpsError("not-found", "Fault report not found.");
+    }
+    const report = snap.data();
+
+    // Check housing company match
+    if (report?.housingCompanyId !== housingCompanyId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Cross-company access blocked."
+      );
+    }
+
+    // Find the work log to delete
+    const workLogs = report?.workLogs || [];
+    const workLogToDelete = workLogs.find(
+      (log: {id: string; createdBy: string}) => log.id === workLogId
+    );
+
+    if (!workLogToDelete) {
+      throw new HttpsError("not-found", "Work log not found.");
+    }
+
+    // Only allow deletion of own work logs
+    if (workLogToDelete.createdBy !== uid) {
+      throw new HttpsError(
+        "permission-denied",
+        "You can only delete your own work logs."
+      );
+    }
+
+    // Remove the work log from the array
+    try {
+      const updatedWorkLogs = workLogs.filter(
+        (log: {id: string}) => log.id !== workLogId
+      );
+      await docRef.update({
+        workLogs: updatedWorkLogs,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error: unknown) {
+      console.error("Delete work log error:", error);
+      throw new HttpsError("internal", "Failed to delete work log.");
+    }
+
+    return {ok: true};
+  }
+);
+
+/**
  * Updates the status of a fault report.
  * Only accessible by admin and maintenance roles.
  * Validates that the report belongs to the user's housing company.
