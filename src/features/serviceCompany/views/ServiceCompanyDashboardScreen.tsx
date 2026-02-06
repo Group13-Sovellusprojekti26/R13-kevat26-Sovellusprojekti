@@ -49,7 +49,7 @@ export const ServiceCompanyDashboardScreen: React.FC = () => {
               {t('serviceCompany.yourInfo')}
             </Text>
             <View style={styles.infoRow}>
-              <Text variant="bodyLarge" style={styles.infoLabel}>{t('auth.name')}:</Text>
+              <Text variant="bodyLarge" style={styles.infoLabel}>{t('serviceCompany.name')}:</Text>
               <Text variant="bodyLarge" style={styles.infoValue}>
                 {profile.firstName} {profile.lastName}
               </Text>
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontWeight: '600',
-    flex: 1,
+    flex: 1.3,
   },
   infoValue: {
     flex: 2,

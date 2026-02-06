@@ -12,10 +12,14 @@ import { FaultReportDetailsScreen } from '@/shared/components/FaultReportDetails
 import { CreateAnnouncementScreen } from '@/features/housingCompany/views/CreateAnnouncementScreen';
 import { EditAnnouncementScreen } from '@/features/housingCompany/views/EditAnnouncementScreen';
 import { AnnouncementDetailScreen } from '@/features/housingCompany/views/AnnouncementDetailScreen';
+import { HCCreateFaultReportScreen } from '@/features/housingCompany/views/HCCreateFaultReportScreen';
+import { StatisticsScreen } from '@/features/housingCompany/views/StatisticsScreen';
 
 export type HousingCompanyStackParamList = {
   Tabs: undefined;
   FaultReportDetails: { faultReportId: string };
+  CreateOwnFaultReport: { faultReportId?: string };
+  OwnFaultReportDetails: { faultReportId: string };
   CreateResidentInvite: undefined;
   CreateManagementInvite: undefined;
   CreateServiceCompanyInvite: undefined;
@@ -25,6 +29,7 @@ export type HousingCompanyStackParamList = {
   CreateAnnouncement: undefined;
   EditAnnouncement: { announcementId: string };
   AnnouncementDetail: { announcementId: string };
+  Statistics: undefined;
 };
 
 const Stack = createNativeStackNavigator<HousingCompanyStackParamList>();
@@ -51,7 +56,25 @@ export const HousingCompanyStack: React.FC = () => {
         options={{
           headerShown: true,
           title: t('faults.detailTitle'),
-          headerBackTitle: t('faults.faultReports'),
+          headerBackTitle: t('faults.title'),
+        }}
+      />
+      <Stack.Screen
+        name="CreateOwnFaultReport"
+        component={HCCreateFaultReportScreen}
+        options={({ route }) => ({
+          headerShown: true,
+          title: route.params?.faultReportId ? t('faults.editTitle') : t('faults.createTitle'),
+          headerBackTitle: t('housingCompany.dashboard.ownFaultsTab'),
+        })}
+      />
+      <Stack.Screen
+        name="OwnFaultReportDetails"
+        component={FaultReportDetailsScreen}
+        options={{
+          headerShown: true,
+          title: t('faults.detailTitle'),
+          headerBackTitle: t('housingCompany.dashboard.ownFaultsTab'),
         }}
       />
       <Stack.Screen 
@@ -133,6 +156,15 @@ export const HousingCompanyStack: React.FC = () => {
           headerShown: true,
           title: t('announcements.detailTitle'),
           headerBackTitle: t('announcements.announcements'),
+        }}
+      />
+      <Stack.Screen 
+        name="Statistics" 
+        component={StatisticsScreen}
+        options={{
+          headerShown: true,
+          title: t('housingCompany.statistics.title'),
+          headerBackTitle: t('common.back'),
         }}
       />
     </Stack.Navigator>

@@ -48,6 +48,23 @@ export const announcementFormStyles = StyleSheet.create({
     marginBottom: spacing.md,
     marginTop: spacing.sm,
   },
+  contentInput: {
+    minHeight: 150,
+    textAlignVertical: 'top',
+  },
+  contentMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -4,
+    marginBottom: spacing.lg,
+  },
+  contentMeta: {
+    fontSize: 12,
+  },
+  contentCount: {
+    fontSize: 12,
+  },
   checkboxBox: {
     flexDirection: 'row',
     alignItems: 'center',

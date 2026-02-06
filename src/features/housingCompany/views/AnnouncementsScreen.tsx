@@ -25,15 +25,16 @@ export const AnnouncementsScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { loading, profile, error } = useUserProfile();
-  const { fetchAnnouncements, deleteAnnouncement } = useAnnouncementsVM();
+  const { fetchAnnouncements, deleteAnnouncement, _hasHydrated, announcements } = useAnnouncementsVM();
+  const hasCachedAnnouncements = announcements.length > 0;
 
-  // Fetch announcements on screen focus
+  // Fetch announcements on screen focus, but only after hydration is complete
   useFocusEffect(
     useCallback(() => {
-      if (profile?.housingCompanyId) {
+      if (profile?.housingCompanyId && _hasHydrated) {
         fetchAnnouncements(profile.housingCompanyId);
       }
-    }, [profile?.housingCompanyId, fetchAnnouncements])
+    }, [profile?.housingCompanyId, fetchAnnouncements, _hasHydrated])
   );
 
   const handleDeletePress = (announcement: Announcement) => {
@@ -47,7 +48,7 @@ export const AnnouncementsScreen: React.FC = () => {
     });
   };
 
-  if (loading || error) {
+  if ((loading && !hasCachedAnnouncements) || (error && !hasCachedAnnouncements)) {
     return (
       <LoadingState
         isLoading={loading}
@@ -58,23 +59,12 @@ export const AnnouncementsScreen: React.FC = () => {
     );
   }
 
-  if (!profile) {
-    return (
-      <LoadingState
-        isLoading={false}
-        error={t('common.error')}
-      >
-        <></>
-      </LoadingState>
-    );
-  }
-
-  const permissions = getAnnouncementPermissions(profile.role);
+  const permissions = getAnnouncementPermissions(profile?.role ?? 'resident');
 
   return (
     <AnnouncementsListScreen
       permissions={permissions}
-      housingCompanyId={profile.housingCompanyId}
+      housingCompanyId={profile?.housingCompanyId}
       onCreatePress={() => {
         haptic.light();
         (navigation as NativeStackNavigationProp<any>).navigate('CreateAnnouncement');

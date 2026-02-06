@@ -136,80 +136,82 @@ export const GenericFilterModal: React.FC<GenericFilterModalProps> = ({
           style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
           elevation={4}
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.modalScrollContent}
-            style={styles.scrollView}
-          >
-            {sections.map((section, index) => (
-              <View key={`${section.title}-${index}`}>
-                <Text variant="labelLarge" style={styles.sectionTitle}>
-                  {section.title}
-                </Text>
+          <View style={styles.contentWrapper}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+              style={styles.scrollView}
+            >
+              {sections.map((section, index) => (
+                <View key={`${section.title}-${index}`}>
+                  <Text variant="labelLarge" style={styles.sectionTitle}>
+                    {section.title}
+                  </Text>
 
-                {section.type === 'radio' && (
-                  <RadioButton.Group
-                    onValueChange={section.onchange as (value: string) => void}
-                    value={section.selectedValues as string}
-                  >
-                    {section.options.map((option) => (
-                      <RadioButton.Item
-                        key={option.value}
-                        label={option.label}
-                        value={option.value}
-                      />
-                    ))}
-                  </RadioButton.Group>
-                )}
-
-                {section.type === 'checkbox' && (
-                  <View>
-                    {section.options.map((option) => (
-                      <View key={option.value} style={styles.checkboxItem}>
-                        <Checkbox
-                          status={
-                            (section.selectedValues as string[]).includes(option.value)
-                              ? 'checked'
-                              : 'unchecked'
-                          }
-                          onPress={() => {
-                            const current = section.selectedValues as string[];
-                            if (current.includes(option.value)) {
-                              section.onchange(current.filter(v => v !== option.value));
-                            } else {
-                              section.onchange([...current, option.value]);
-                            }
-                          }}
+                  {section.type === 'radio' && (
+                    <RadioButton.Group
+                      onValueChange={section.onchange as (value: string) => void}
+                      value={section.selectedValues as string}
+                    >
+                      {section.options.map((option) => (
+                        <RadioButton.Item
+                          key={option.value}
+                          label={option.label}
+                          value={option.value}
                         />
-                        <Text
-                          variant="bodyMedium"
-                          style={styles.checkboxLabel}
-                          onPress={() => {
-                            const current = section.selectedValues as string[];
-                            if (current.includes(option.value)) {
-                              section.onchange(current.filter(v => v !== option.value));
-                            } else {
-                              section.onchange([...current, option.value]);
-                            }
-                          }}
-                        >
-                          {option.label}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            ))}
-          </ScrollView>
+                      ))}
+                    </RadioButton.Group>
+                  )}
 
-          <View style={styles.buttonContainer}>
-            <TFButton
-              title={t('common.done')}
-              mode="contained"
-              onPress={onClose}
-              fullWidth
-            />
+                  {section.type === 'checkbox' && (
+                    <View>
+                      {section.options.map((option) => (
+                        <View key={option.value} style={styles.checkboxItem}>
+                          <Checkbox
+                            status={
+                              (section.selectedValues as string[]).includes(option.value)
+                                ? 'checked'
+                                : 'unchecked'
+                            }
+                            onPress={() => {
+                              const current = section.selectedValues as string[];
+                              if (current.includes(option.value)) {
+                                section.onchange(current.filter(v => v !== option.value));
+                              } else {
+                                section.onchange([...current, option.value]);
+                              }
+                            }}
+                          />
+                          <Text
+                            variant="bodyMedium"
+                            style={styles.checkboxLabel}
+                            onPress={() => {
+                              const current = section.selectedValues as string[];
+                              if (current.includes(option.value)) {
+                                section.onchange(current.filter(v => v !== option.value));
+                              } else {
+                                section.onchange([...current, option.value]);
+                              }
+                            }}
+                          >
+                            {option.label}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={styles.buttonContainer}>
+              <TFButton
+                title={t('common.done')}
+                mode="contained"
+                onPress={onClose}
+                fullWidth
+              />
+            </View>
           </View>
         </Surface>
       </View>
@@ -228,7 +230,11 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     height: '80%',
     flexDirection: 'column',
+  },
+  contentWrapper: {
+    flex: 1,
     overflow: 'hidden',
+    borderRadius: borderRadius.lg,
   },
   modalScrollContent: {
     paddingVertical: spacing.lg,

@@ -15,16 +15,18 @@ import { getAnnouncementById } from '@/data/repositories/announcements.repo';
 import { haptic } from '@/shared/utils/haptics';
 import { editAnnouncementStyles as styles } from '../styles/announcements.styles';
 import type { HousingCompanyStackParamList } from '@/app/navigation/HousingCompanyStack';
+import type { MaintenanceStackParamList } from '@/app/navigation/MaintenanceStack';
 import { AnnouncementFormContent, AnnouncementFormData } from './components/AnnouncementFormContent';
 import { announcementFormSchema, AnnouncementFormSchema } from '../schemas/announcementForm.schema';
 import { showDeleteAnnouncementConfirm } from '../utils/announcement.utils';
 
-type EditAnnouncementRoute = RouteProp<HousingCompanyStackParamList, 'EditAnnouncement'>;
+type EditAnnouncementRoute = RouteProp<HousingCompanyStackParamList | MaintenanceStackParamList, 'EditAnnouncement'>;
 
 /**
  * Screen component for editing existing announcements.
  * Loads announcement data and populates form with current values.
  * Uses shared AnnouncementFormContent component to reduce code duplication.
+ * Works with both HousingCompany and Maintenance stacks.
  * 
  * Responsibilities:
  * - Fetch announcement by ID from route params
@@ -43,7 +45,7 @@ type EditAnnouncementRoute = RouteProp<HousingCompanyStackParamList, 'EditAnnoun
  */
 export const EditAnnouncementScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList | MaintenanceStackParamList>>();
   const route = useRoute<EditAnnouncementRoute>();
 
   const { announcementId } = route.params;
@@ -162,7 +164,7 @@ export const EditAnnouncementScreen: React.FC = () => {
 
   const announcementLoadError = !announcement ? t('announcements.fetchFailed') : null;
 
-  if (loadingAnnouncement || announcementLoadError) {
+  if (loadingAnnouncement || announcementLoadError || !announcement) {
     return (
       <LoadingState
         isLoading={loadingAnnouncement}

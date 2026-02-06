@@ -5,24 +5,22 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
-import { Screen } from '../../../../shared/components/Screen';
-import { TFButton } from '../../../../shared/components/TFButton';
-import { TFTextField } from '../../../../shared/components/TFTextField';
-import { useCreateFaultReportVM } from '../viewmodels/useCreateFaultReportVM';
-import { FaultReportStatus, UrgencyLevel, UserRole } from '../../../../data/models/enums';
-import { haptic } from '../../../../shared/utils/haptics';
-import { useMediaUpload } from '../../../../shared/hooks/useMediaUpload';
-import type { ResidentTabsParamList } from '../../../../app/navigation/ResidentTabs';
+import { Screen } from './Screen';
+import { TFButton } from './TFButton';
+import { TFTextField } from './TFTextField';
+import { FaultReportStatus, UrgencyLevel, UserRole } from '@/data/models/enums';
+import { haptic } from '@/shared/utils/haptics';
+import { useMediaUpload } from '@/shared/hooks/useMediaUpload';
+import type { FaultReport } from '@/data/models/FaultReport';
 
 // ---------------- VALIDATION ----------------
 
 const MIN_DESCRIPTION_LENGTH = 10;
 const MAX_DESCRIPTION_LENGTH = 100;
 
-const createFaultReportSchema = z.object({
+// Base schema for all users
+const baseFaultReportSchema = z.object({
   title: z.string().min(1, 'faults.titleRequired'),
   description: z
     .string()
@@ -34,38 +32,78 @@ const createFaultReportSchema = z.object({
   hasPets: z.boolean().optional(),
 });
 
-type CreateFaultReportFormData = z.infer<typeof createFaultReportSchema>;
+// Extended schema for housing company/maintenance users (requires buildingId and apartmentNumber)
+const extendedFaultReportSchema = baseFaultReportSchema.extend({
+  buildingId: z.string().min(1, 'faults.buildingIdRequired'),
+  apartmentNumber: z.string().min(1, 'faults.apartmentNumberRequired'),
+});
+
+// Use base schema as the default export type
+const createFaultReportSchema = baseFaultReportSchema;
+
+export type CreateFaultReportFormData = z.infer<typeof baseFaultReportSchema> & {
+  buildingId?: string;
+  apartmentNumber?: string;
+};
+
+// ---------------- TYPES ----------------
+
+export interface CreateFaultReportFormProps {
+  /** Current user role */
+  userRole: UserRole | null;
+  /** Existing fault report for edit mode */
+  report?: FaultReport | null;
+  /** Whether form is in edit mode */
+  isEditMode?: boolean;
+  /** Loading state */
+  loading?: boolean;
+  /** Error message */
+  error?: string | null;
+  /** Called when form is submitted (create mode) */
+  onSubmit: (data: CreateFaultReportFormData, imageDataUrls: string[]) => Promise<boolean>;
+  /** Called when form is updated (edit mode) */
+  onUpdate?: (params: {
+    id: string;
+    description?: string;
+    imageUris?: string[];
+    existingImageUrls?: string[];
+    allowMasterKeyAccess?: boolean;
+    hasPets?: boolean;
+  }) => Promise<boolean>;
+  /** Called when report is closed */
+  onClose?: (id: string) => Promise<boolean>;
+  /** Called when cancelled */
+  onCancel: () => void;
+  /** Called after successful submission */
+  onSuccess?: () => void;
+  /** Whether to show additional info section (pets, master key) - default true */
+  showAdditionalInfo?: boolean;
+}
 
 // ---------------- COMPONENT ----------------
 
-export const CreateFaultReportScreen: React.FC = () => {
+export const CreateFaultReportForm: React.FC<CreateFaultReportFormProps> = ({
+  userRole,
+  report,
+  isEditMode = false,
+  loading = false,
+  error,
+  onSubmit,
+  onUpdate,
+  onClose,
+  onCancel,
+  onSuccess,
+  showAdditionalInfo = true,
+}) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const navigation = useNavigation<BottomTabNavigationProp<ResidentTabsParamList, 'CreateFaultReport'>>();
-  const route = useRoute<RouteProp<ResidentTabsParamList, 'CreateFaultReport'>>();
-  const {
-    loading,
-    error,
-    success,
-    submitReport,
-    clearError,
-    reset,
-    loadReport,
-    updateReport,
-    closeReport,
-    report,
-    userRole,
-    loadUserRole,
-  } = useCreateFaultReportVM();
 
-  const faultReportId = route.params?.faultReportId;
-  const isEditMode = useMemo(() => Boolean(faultReportId), [faultReportId]);
-  const isResident = userRole === UserRole.RESIDENT;
+  // Determine if the form is editable based on role and status
+  const isOwner = report?.createdByUserId === report?.userId;
   const isEditable =
-    isResident &&
-    (!isEditMode ||
-      report?.status === FaultReportStatus.OPEN ||
-      report?.status === FaultReportStatus.CREATED);
+    !isEditMode ||
+    report?.status === FaultReportStatus.OPEN ||
+    report?.status === FaultReportStatus.CREATED;
 
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>([]);
   const dedupeUrls = (urls: string[]) => Array.from(new Set(urls));
@@ -75,7 +113,7 @@ export const CreateFaultReportScreen: React.FC = () => {
   );
 
   // Initialize media upload hook - supports images only for fault reports
-  const { media, pickImage, removeMedia } = useMediaUpload({
+  const { media, pickImage, removeMedia, clearMedia } = useMediaUpload({
     maxFileSize: 5 * 1024 * 1024, // 5 MB per image
     maxFiles: 10,
     allowedTypes: ['image/jpeg', 'image/png', 'image/heic', 'image/heif'],
@@ -100,6 +138,11 @@ export const CreateFaultReportScreen: React.FC = () => {
     );
   };
 
+  // Check if user needs to select building/apartment (housing company or maintenance)
+  const requiresBuildingSelection = userRole === UserRole.HOUSING_COMPANY || userRole === UserRole.MAINTENANCE;
+  
+  // Use appropriate schema based on role
+  const schema = requiresBuildingSelection ? extendedFaultReportSchema : baseFaultReportSchema;
 
   const {
     control,
@@ -108,7 +151,7 @@ export const CreateFaultReportScreen: React.FC = () => {
     reset: resetForm,
     watch,
   } = useForm<CreateFaultReportFormData>({
-    resolver: zodResolver(createFaultReportSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       title: '',
       description: '',
@@ -116,64 +159,30 @@ export const CreateFaultReportScreen: React.FC = () => {
       urgency: UrgencyLevel.MEDIUM,
       allowMasterKeyAccess: false,
       hasPets: false,
+      buildingId: '',
+      apartmentNumber: '',
     },
   });
 
+  // Reset form when entering create mode
   useEffect(() => {
-    if (faultReportId) {
-      loadReport(faultReportId);
+    if (!isEditMode) {
+      resetForm({
+        title: '',
+        description: '',
+        location: '',
+        urgency: UrgencyLevel.MEDIUM,
+        allowMasterKeyAccess: false,
+        hasPets: false,
+        buildingId: '',
+        apartmentNumber: '',
+      });
+      setExistingImageUrls([]);
+      clearMedia();
     }
-  }, [faultReportId, loadReport]);
+  }, [isEditMode, resetForm, clearMedia]);
 
-  useEffect(() => {
-    loadUserRole();
-  }, [loadUserRole]);
-
-  useFocusEffect(
-    useCallback(() => {
-      // In edit mode, register cleanup to clear state when leaving
-      if (faultReportId) {
-        return () => {
-          // Cleanup when leaving edit mode - clear params so new report can be created
-          navigation.setParams({ faultReportId: undefined });
-          reset();
-        };
-      }
-
-      // Clear form and ViewModel for new reports
-      resetForm({
-        title: '',
-        description: '',
-        location: '',
-        urgency: UrgencyLevel.MEDIUM,
-        allowMasterKeyAccess: false,
-        hasPets: false,
-      });
-      setExistingImageUrls([]);
-      reset();
-      return undefined;
-    }, [faultReportId, resetForm, reset, navigation])
-  );
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', () => {
-      navigation.setParams({});
-      resetForm({
-        title: '',
-        description: '',
-        location: '',
-        urgency: UrgencyLevel.MEDIUM,
-        allowMasterKeyAccess: false,
-        hasPets: false,
-      });
-      setExistingImageUrls([]);
-      clearError();
-      reset();
-    });
-
-    return unsubscribe;
-  }, [clearError, navigation, reset, resetForm]);
-
+  // Load report data in edit mode
   useEffect(() => {
     if (report && isEditMode) {
       resetForm({
@@ -183,75 +192,42 @@ export const CreateFaultReportScreen: React.FC = () => {
         urgency: report.urgency,
         allowMasterKeyAccess: report.allowMasterKeyAccess ?? false,
         hasPets: report.hasPets ?? false,
+        buildingId: report.buildingId ?? '',
+        apartmentNumber: report.apartmentNumber ?? '',
       });
       setExistingImageUrls(dedupeUrls(report.imageUrls ?? []));
     }
   }, [report, resetForm, isEditMode]);
 
-  useEffect(() => {
-    if (!isEditMode) {
-      setExistingImageUrls([]);
-    }
-  }, [isEditMode]);
-
-  useEffect(() => {
-    if (success && !isEditMode) {
-      const handleAfterSave = () => {
-        if (route.params?.faultReportId) {
-          navigation.setParams({ faultReportId: undefined });
-        }
-        if (navigation.canGoBack()) {
-          navigation.goBack();
-          return;
-        }
-        navigation.navigate('FaultReports');
-      };
-
-      Alert.alert(t('faults.createSuccess'), t('faults.createSuccess'), [
-        {
-          text: t('common.ok'),
-          onPress: handleAfterSave,
-        },
-      ]);
-      resetForm();
-      reset();
-    }
-  }, [isEditMode, navigation, reset, resetForm, route.params, success, t]);
-
   const descriptionValue = watch('description');
   const descriptionCount = descriptionValue?.length ?? 0;
-
-
 
   // -------- HELPER: Convert media files to data URLs --------
   const mediaToDataUrls = (mediaFiles: typeof media): string[] => {
     return mediaFiles.map(file => {
-      // Detect MIME type and format accordingly
       const mimeType = file.mimeType || 'image/jpeg';
       return `data:${mimeType};base64,${file.base64}`;
     });
   };
 
   // -------- SUBMIT --------
-
-  const onSubmit = async (data: CreateFaultReportFormData) => {
+  const handleFormSubmit = async (data: CreateFaultReportFormData) => {
     if (loading) {
       return;
     }
-    clearError();
 
-    if (isEditMode && faultReportId) {
+    if (isEditMode && report && onUpdate) {
       try {
         const imageUrisFromMedia = mediaToDataUrls(media);
         const uniqueImageUris = dedupeUrls(imageUrisFromMedia);
         const uniqueExistingUrls = dedupeUrls(mergedExistingImageUrls);
-        const descriptionToSend = report && data.description.trim() === report.description.trim()
+        const descriptionToSend = data.description.trim() === report.description.trim()
           ? undefined
           : data.description;
         const imageUrisToSend = uniqueImageUris.length > 0 ? uniqueImageUris : undefined;
         const existingUrlsToSend = uniqueExistingUrls;
-        const ok = await updateReport({
-          id: faultReportId,
+        const ok = await onUpdate({
+          id: report.id,
           description: descriptionToSend,
           imageUris: imageUrisToSend,
           existingImageUrls: existingUrlsToSend,
@@ -262,26 +238,33 @@ export const CreateFaultReportScreen: React.FC = () => {
           Alert.alert(t('faults.updateSuccess'), t('faultReport.updateSuccess'), [
             {
               text: t('common.ok'),
-              onPress: () => {
-                navigation.navigate('FaultReports');
-              },
+              onPress: onSuccess,
             },
           ]);
         }
-      } catch (updateError) {
+      } catch {
         Alert.alert(t('common.error'), t('faults.updateError'));
       }
       return;
     }
 
-    await submitReport({
-      ...data,
-      imageUris: dedupeUrls(mediaToDataUrls(media)),
-    });
+    const success = await onSubmit(data, dedupeUrls(mediaToDataUrls(media)));
+    if (success) {
+      Alert.alert(t('faults.createSuccess'), t('faults.createSuccess'), [
+        {
+          text: t('common.ok'),
+          onPress: () => {
+            resetForm();
+            clearMedia();
+            onSuccess?.();
+          },
+        },
+      ]);
+    }
   };
 
   const handleClose = async () => {
-    if (!faultReportId) {
+    if (!report || !onClose) {
       return;
     }
 
@@ -294,10 +277,9 @@ export const CreateFaultReportScreen: React.FC = () => {
           text: t('faults.closeAction'),
           style: 'destructive',
           onPress: async () => {
-            clearError();
-            const ok = await closeReport(faultReportId);
+            const ok = await onClose(report.id);
             if (ok) {
-              navigation.goBack();
+              onCancel();
             }
           },
         },
@@ -330,6 +312,43 @@ export const CreateFaultReportScreen: React.FC = () => {
             )}
           />
 
+          {/* Building and apartment selection for housing company/maintenance users */}
+          {requiresBuildingSelection && !isEditMode && (
+            <>
+              <Controller
+                control={control}
+                name="buildingId"
+                render={({ field }) => (
+                  <TFTextField
+                    label={t('faults.buildingId')}
+                    value={field.value ?? ''}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.buildingId ? t(errors.buildingId.message!) : undefined}
+                    disabled={loading}
+                    placeholder={t('faults.buildingIdPlaceholder')}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="apartmentNumber"
+                render={({ field }) => (
+                  <TFTextField
+                    label={t('faults.apartmentNumber')}
+                    value={field.value ?? ''}
+                    onChangeText={field.onChange}
+                    onBlur={field.onBlur}
+                    error={errors.apartmentNumber ? t(errors.apartmentNumber.message!) : undefined}
+                    disabled={loading}
+                    placeholder={t('faults.apartmentNumberPlaceholder')}
+                  />
+                )}
+              />
+            </>
+          )}
+
           <Controller
             control={control}
             name="description"
@@ -348,8 +367,7 @@ export const CreateFaultReportScreen: React.FC = () => {
             )}
           />
           <View style={styles.descriptionMetaRow}>
-            <Text style={[styles.descriptionMeta, { color: theme.colors.onSurfaceVariant }]}
-            >
+            <Text style={[styles.descriptionMeta, { color: theme.colors.onSurfaceVariant }]}>
               {t('faults.descriptionMinMax', {
                 min: MIN_DESCRIPTION_LENGTH,
                 max: MAX_DESCRIPTION_LENGTH,
@@ -425,67 +443,69 @@ export const CreateFaultReportScreen: React.FC = () => {
           />
         </View>
 
-        <View style={[styles.additionalInfoSection, { backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, paddingHorizontal: 8 }]}>
-          <Text style={[styles.label, { marginHorizontal: 8, marginTop: 8, marginBottom: 8 }]}>{t('faults.additionalInfoTitle')}</Text>
-          <Controller
-            control={control}
-            name="allowMasterKeyAccess"
-            render={({ field }) => (
-              <Pressable
-                onPress={() => field.onChange(!field.value)}
-                disabled={loading || !isEditable}
-              >
-                <Surface
-                  style={[
-                    styles.checkboxBox,
-                    {
-                      borderColor: field.value ? theme.colors.primary : theme.colors.outline,
-                      borderWidth: 2,
-                      backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
-                    },
-                  ]}
-                  elevation={0}
+        {showAdditionalInfo && (
+          <View style={[styles.additionalInfoSection, { backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, paddingHorizontal: 8 }]}>
+            <Text style={[styles.label, { marginHorizontal: 8, marginTop: 8, marginBottom: 8 }]}>{t('faults.additionalInfoTitle')}</Text>
+            <Controller
+              control={control}
+              name="allowMasterKeyAccess"
+              render={({ field }) => (
+                <Pressable
+                  onPress={() => field.onChange(!field.value)}
+                  disabled={loading || !isEditable}
                 >
-                  <Checkbox
-                    status={field.value ? 'checked' : 'unchecked'}
-                    color={field.value ? theme.colors.primary : undefined}
-                    disabled={loading || !isEditable}
-                  />
-                  <Text style={styles.checkboxLabel}>{t('faults.allowMasterKeyAccess')}</Text>
-                </Surface>
-              </Pressable>
-            )}
-          />
-          <Controller
-            control={control}
-            name="hasPets"
-            render={({ field }) => (
-              <Pressable
-                onPress={() => field.onChange(!field.value)}
-                disabled={loading || !isEditable}
-              >
-                <Surface
-                  style={[
-                    styles.checkboxBox,
-                    {
-                      borderColor: field.value ? theme.colors.primary : theme.colors.outline,
-                      borderWidth: 2,
-                      backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
-                    },
-                  ]}
-                  elevation={0}
+                  <Surface
+                    style={[
+                      styles.checkboxBox,
+                      {
+                        borderColor: field.value ? theme.colors.primary : theme.colors.outline,
+                        borderWidth: 2,
+                        backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
+                      },
+                    ]}
+                    elevation={0}
+                  >
+                    <Checkbox
+                      status={field.value ? 'checked' : 'unchecked'}
+                      color={field.value ? theme.colors.primary : undefined}
+                      disabled={loading || !isEditable}
+                    />
+                    <Text style={styles.checkboxLabel}>{t('faults.allowMasterKeyAccess')}</Text>
+                  </Surface>
+                </Pressable>
+              )}
+            />
+            <Controller
+              control={control}
+              name="hasPets"
+              render={({ field }) => (
+                <Pressable
+                  onPress={() => field.onChange(!field.value)}
+                  disabled={loading || !isEditable}
                 >
-                  <Checkbox
-                    status={field.value ? 'checked' : 'unchecked'}
-                    color={field.value ? theme.colors.primary : undefined}
-                    disabled={loading || !isEditable}
-                  />
-                  <Text style={styles.checkboxLabel}>{t('faults.hasPets')}</Text>
-                </Surface>
-              </Pressable>
-            )}
-          />
-        </View>
+                  <Surface
+                    style={[
+                      styles.checkboxBox,
+                      {
+                        borderColor: field.value ? theme.colors.primary : theme.colors.outline,
+                        borderWidth: 2,
+                        backgroundColor: field.value ? theme.colors.primaryContainer : theme.colors.surface,
+                      },
+                    ]}
+                    elevation={0}
+                  >
+                    <Checkbox
+                      status={field.value ? 'checked' : 'unchecked'}
+                      color={field.value ? theme.colors.primary : undefined}
+                      disabled={loading || !isEditable}
+                    />
+                    <Text style={styles.checkboxLabel}>{t('faults.hasPets')}</Text>
+                  </Surface>
+                </Pressable>
+              )}
+            />
+          </View>
+        )}
 
         {isEditMode && existingImageUrls.length > 0 && (
           <View style={styles.imageSection}>
@@ -538,12 +558,12 @@ export const CreateFaultReportScreen: React.FC = () => {
           {isEditable && (
             <TFButton
               title={isEditMode ? t('faults.update') : t('faults.submit')}
-              onPress={handleSubmit(onSubmit)}
+              onPress={handleSubmit(handleFormSubmit)}
               loading={loading}
               fullWidth
             />
           )}
-          {isEditMode && (
+          {isEditMode && onClose && (
             <TFButton
               title={t('faults.close')}
               onPress={handleClose}
@@ -556,12 +576,7 @@ export const CreateFaultReportScreen: React.FC = () => {
           )}
           <TFButton
             title={t('faults.cancel')}
-            onPress={() => {
-              // Clear ViewModel state and route params before navigating away
-              reset();
-              navigation.setParams({ faultReportId: undefined });
-              navigation.goBack();
-            }}
+            onPress={onCancel}
             mode="outlined"
             disabled={loading}
             fullWidth
@@ -630,16 +645,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     marginBottom: 8,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  checkboxRowPressed: {
-    opacity: 0.7,
   },
   checkboxLabel: {
     marginLeft: 8,

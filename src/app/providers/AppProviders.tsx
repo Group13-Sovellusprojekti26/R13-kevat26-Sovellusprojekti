@@ -8,8 +8,8 @@ import '../i18n/i18n'; // Initialize i18n
 import { RootNavigator } from '../navigation/RootNavigator';
 
 
-import { useAuthVM } from '../../features/auth/viewmodels/useAuthVM';
-import { useSettingsVM } from '../../features/settings/viewmodels/useSettingsVM';
+import { useAuthVM } from '@/features/auth/viewmodels/useAuthVM';
+import { useSettingsVM } from '@/features/settings/viewmodels/useSettingsVM';
 
 /**
  * Root provider component wrapping all app providers
@@ -53,7 +53,7 @@ export const AppProviders: React.FC<{ children?: React.ReactNode }> = ({ childre
 
   return (
     <SafeAreaProvider>
-      <PaperProvider theme={currentTheme}>
+      <PaperProvider theme={currentTheme} key={themeMode}>
         <NavigationContainer theme={navigationTheme}>
           {children || <RootNavigator />}
         </NavigationContainer>

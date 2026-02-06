@@ -118,6 +118,16 @@ export const HousingCompanyDashboardScreen: React.FC = () => {
           </Surface>
         </View>
 
+        {/* Statistics Button */}
+        <TFButton
+          title={t('housingCompany.statistics.viewStatistics')}
+          onPress={() => navigation.navigate('Statistics')}
+          icon="chart-bar"
+          mode="outlined"
+          fullWidth
+          style={styles.statisticsButton}
+        />
+
         {/* Welcome Card */}
         <Surface style={styles.welcomeCard} elevation={1}>
           <Text variant="titleLarge" style={styles.welcomeTitle}>
@@ -288,6 +298,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionButton: {
+  },
+  statisticsButton: {
+    marginTop: 0,
+    marginBottom: 26,
   },
   partnerCard: {
     marginBottom: 16,

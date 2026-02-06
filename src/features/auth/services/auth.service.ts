@@ -8,6 +8,7 @@ import {
 import { auth } from '../../../data/firebase/firebase';
 import { LoginCredentials } from '../types/auth.types';
 import { AppError, logError } from '../../../shared/utils/errors';
+import { clearPersistedUserData } from '../../../shared/utils/zustandStorage';
 
 /**
  * Sign in with email and password
@@ -45,9 +46,12 @@ export async function signUp(credentials: LoginCredentials): Promise<UserCredent
 
 /**
  * Sign out current user
+ * Clears all persisted user data to prevent data leakage
  */
 export async function signOut(): Promise<void> {
   try {
+    // Clear persisted user data before signing out
+    await clearPersistedUserData();
     await firebaseSignOut(auth);
   } catch (error: any) {
     logError(error, 'Sign out');

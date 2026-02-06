@@ -1,169 +1,58 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useTranslation } from 'react-i18next';
-import { Alert, View, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { IconButton } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { HousingCompanyStackParamList } from './HousingCompanyStack';
 import { HousingCompanyDashboardScreen } from '@/features/housingCompany/views/HousingCompanyDashboardScreen';
-import { FaultReportListScreen } from '@/shared/components/FaultReportListScreen';
 import { AnnouncementsScreen } from '@/features/housingCompany/views/AnnouncementsScreen';
-import { signOut } from '@/features/auth/services/auth.service';
-import { UserRole } from '@/data/models/enums';
+import { FaultReportListScreen } from '@/shared/components/FaultReportListScreen';
+import { HCCreateFaultReportScreen } from '@/features/housingCompany/views/HCCreateFaultReportScreen';
+import { createRoleBasedTabs, TabConfig } from '@/shared/navigation/RoleBasedTabs';
 
 export type HousingCompanyTabsParamList = {
   Dashboard: undefined;
+  Announcements: undefined;
   ManageFaultReports: undefined;
-  ManageAnnouncements: undefined;
+  CreateFaultReport: { faultReportId?: string } | undefined;
 };
 
-const Tab = createBottomTabNavigator<HousingCompanyTabsParamList>();
+/**
+ * Tab configuration for housing company users
+ * Order: Dashboard -> Announcements -> Fault Reports (all, can edit own) -> Create Fault Report
+ */
+const housingCompanyTabConfig: TabConfig<HousingCompanyTabsParamList>[] = [
+  {
+    name: 'Dashboard',
+    component: HousingCompanyDashboardScreen,
+    titleKey: 'housingCompany.dashboard.title',
+    tabLabelKey: 'housingCompany.dashboard.tabLabel',
+  },
+  {
+    name: 'Announcements',
+    component: AnnouncementsScreen,
+    titleKey: 'announcements.title',
+    tabLabelKey: 'announcements.title',
+  },
+  {
+    name: 'ManageFaultReports',
+    children: () => <FaultReportListScreen detailScreenName="FaultReportDetails" canEditOwnReports />,
+    titleKey: 'faults.title',
+    tabLabelKey: 'faults.title',
+  },
+  {
+    name: 'CreateFaultReport',
+    component: HCCreateFaultReportScreen,
+    titleKey: 'faults.createTitle',
+    tabLabelKey: 'faults.createTitle',
+    dynamicTitle: (params, t) => {
+      const faultReportId = params?.faultReportId;
+      const isEditMode = Boolean(faultReportId);
+      return isEditMode ? t('faults.editTitle') : t('faults.createTitle');
+    },
+  },
+];
 
 /**
  * Bottom tab navigation for housing company users
  */
-export const HousingCompanyTabs: React.FC = () => {
-  const { t } = useTranslation();
-
-  const handleLogout = () => {
-    Alert.alert(
-      t('common.logout'),
-      '',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.logout'), 
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
-  };
-
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#0D9488',
-        tabBarInactiveTintColor: '#666',
-      }}
-    >
-      <Tab.Screen
-        name="Dashboard"
-        component={HousingCompanyDashboardScreen}
-        options={{
-          title: t('housingCompany.dashboard.title'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('housingCompany.dashboard.tabLabel'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home" size={size} color={color} />
-          ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
-        }}
-      />
-      <Tab.Screen
-        name="ManageFaultReports"
-        component={() => <FaultReportListScreen detailScreenName="FaultReportDetails" />}
-        options={{
-          title: t('housingCompany.dashboard.manageFaults'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('housingCompany.dashboard.manageFaultsTab'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="wrench" size={size} color={color} />
-          ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
-        }}
-      />
-      <Tab.Screen
-        name="ManageAnnouncements"
-        options={{
-          title: t('housingCompany.dashboard.manageAnnouncements'),
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 18,
-          },
-          headerTitleContainerStyle: {
-            paddingRight: 96,
-          },
-          headerRightContainerStyle: {
-            paddingRight: 4,
-          },
-          tabBarLabel: t('housingCompany.dashboard.manageAnnouncementsTab'),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="bullhorn" size={size} color={color} />
-          ),
-          headerRight: () => {
-            const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
-            return (
-              <View style={styles.headerActions}>
-                <IconButton
-                  icon="cog-outline"
-                  onPress={() => navigation.navigate('Settings')}
-                />
-                <IconButton
-                  icon="logout"
-                  onPress={handleLogout}
-                />
-              </View>
-            );
-          },
-        }}
-      >
-        {() => <AnnouncementsScreen />}
-      </Tab.Screen>
-    </Tab.Navigator>
-  );
-};
-
-const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: 'row',
-  },
+export const HousingCompanyTabs = createRoleBasedTabs<HousingCompanyStackParamList, HousingCompanyTabsParamList>({
+  tabs: housingCompanyTabConfig,
+  stackParamList: {} as HousingCompanyStackParamList,
 });

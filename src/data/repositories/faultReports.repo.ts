@@ -17,7 +17,7 @@ import {
 import { AppError, logError } from '../../shared/utils/errors';
 import { timestampToDate } from '../../shared/utils/firebase';
 import { functions, db } from '../firebase/firebase';
-import { FaultReport, CreateFaultReportInput } from '../models/FaultReport';
+import { FaultReport, CreateFaultReportInput, WorkLog } from '../models/FaultReport';
 import { FaultReportStatus, UrgencyLevel, UserRole } from '../models/enums';
 import { getCurrentUser } from '../../features/auth/services/auth.service';
 import { getUserProfile } from './users.repo';
@@ -25,6 +25,9 @@ import { getUserProfile } from './users.repo';
 interface FirestoreFaultReportData {
   createdBy: string;
   createdByUserId?: string;
+  createdByName?: string;
+  createdByApartment?: string;
+  createdByBuilding?: string;
   buildingId: string;
   housingCompanyId: string;
   apartmentId?: string;
@@ -41,19 +44,76 @@ interface FirestoreFaultReportData {
   assignedTo?: string;
   allowMasterKeyAccess?: boolean;
   hasPets?: boolean;
+  workLogs?: Array<{
+    id: string;
+    content: string;
+    createdAt: Timestamp;
+    createdBy: string;
+    createdByName: string;
+  }>;
 }
 
-const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport => {
+/**
+ * Helper function to enrich fault reports with creator user information
+ */
+async function enrichWithUserInfo(reports: FaultReport[]): Promise<FaultReport[]> {
+  // Get unique user IDs
+  const userIds = [...new Set(reports.map(r => r.createdByUserId))];
+  
+  // Fetch all user profiles in parallel
+  const userProfiles = await Promise.all(
+    userIds.map(async (userId) => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          return {
+            id: userId,
+            name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
+            apartment: data.apartmentNumber,
+            building: data.buildingId,
+          };
+        }
+      } catch (error) {
+        console.error(`Failed to fetch user ${userId}:`, error);
+      }
+      return null;
+    })
+  );
+
+  // Create a map for quick lookup
+  const userMap = new Map(
+    userProfiles
+      .filter((u): u is NonNullable<typeof u> => u !== null)
+      .map(u => [u.id, u])
+  );
+
+  // Enrich reports with user info
+  return reports.map(report => {
+    const user = userMap.get(report.createdByUserId);
+    return {
+      ...report,
+      createdByName: user?.name || report.createdByName,
+      createdByApartment: user?.apartment || report.createdByApartment,
+      createdByBuilding: user?.building || report.createdByBuilding,
+    };
+  });
+}
+
+const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport | null => {
+  // Required fields; older documents may miss some of these
   if (
     !data.createdAt ||
     (!data.createdBy && !data.createdByUserId) ||
-    !data.buildingId ||
     !data.title ||
     !data.description ||
     !data.status ||
-    !data.urgency
+    !data.urgency ||
+    !data.housingCompanyId
   ) {
-    throw new AppError('faults.missingRequiredFields', 'fault-report/missing-fields');
+    // Skip malformed documents instead of throwing to allow list views to load
+    logError(new Error('fault-report/missing-fields'), 'Skip malformed fault report');
+    return null;
   }
 
   const createdAt = timestampToDate(data.createdAt);
@@ -69,6 +129,9 @@ const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport
     id,
     userId: createdByUserId,
     createdByUserId,
+    createdByName: data.createdByName,
+    createdByApartment: data.createdByApartment,
+    createdByBuilding: data.createdByBuilding,
     apartmentId: data.apartmentId ?? data.apartmentNumber ?? undefined,
     buildingId: data.buildingId,
     housingCompanyId: data.housingCompanyId,
@@ -85,6 +148,13 @@ const mapFaultReport = (id: string, data: FirestoreFaultReportData): FaultReport
     assignedTo: data.assignedTo,
     allowMasterKeyAccess: data.allowMasterKeyAccess,
     hasPets: data.hasPets,
+    workLogs: data.workLogs?.map(log => ({
+      id: log.id,
+      content: log.content,
+      createdAt: timestampToDate(log.createdAt) ?? new Date(),
+      createdBy: log.createdBy,
+      createdByName: log.createdByName,
+    })) ?? [],
   };
 };
 
@@ -102,7 +172,10 @@ export async function getFaultReportsByUser(): Promise<FaultReport[]> {
   );
 
   const snapshot = await getDocs(reportsQuery);
-  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs
+    .map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData))
+    .filter((r): r is FaultReport => r !== null);
+  return enrichWithUserInfo(reports);
 }
 
 export async function getFaultReportsForRole(): Promise<FaultReport[]> {
@@ -128,22 +201,11 @@ export async function getFaultReportsForRole(): Promise<FaultReport[]> {
           orderBy('createdAt', 'desc')
         );
 
-  console.log('Fault report query', {
-    role: userProfile.role,
-    housingCompanyId: userProfile.housingCompanyId,
-    scope,
-    filters:
-      scope === 'byUser'
-        ? [
-            `createdByUserId == ${userProfile.id}`,
-            `housingCompanyId == ${userProfile.housingCompanyId}`,
-          ]
-        : [`housingCompanyId == ${userProfile.housingCompanyId}`],
-    orderBy: 'createdAt desc',
-  });
-
   const snapshot = await getDocs(reportsQuery);
-  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs
+    .map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData))
+    .filter((r): r is FaultReport => r !== null);
+  return enrichWithUserInfo(reports);
 }
 
 export async function getFaultReportsByBuilding(): Promise<FaultReport[]> {
@@ -160,7 +222,10 @@ export async function getFaultReportsByBuilding(): Promise<FaultReport[]> {
   );
 
   const snapshot = await getDocs(reportsQuery);
-  return snapshot.docs.map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData));
+  const reports = snapshot.docs
+    .map(docSnap => mapFaultReport(docSnap.id, docSnap.data() as FirestoreFaultReportData))
+    .filter((r): r is FaultReport => r !== null);
+  return enrichWithUserInfo(reports);
 }
 
 export async function getFaultReportById(id: string): Promise<FaultReport | null> {
@@ -169,7 +234,12 @@ export async function getFaultReportById(id: string): Promise<FaultReport | null
     return null;
   }
 
-  return mapFaultReport(snap.id, snap.data() as FirestoreFaultReportData);
+  const report = mapFaultReport(snap.id, snap.data() as FirestoreFaultReportData);
+  if (!report) {
+    return null;
+  }
+  const enriched = await enrichWithUserInfo([report]);
+  return enriched[0];
 }
 
 export async function createFaultReport(input: CreateFaultReportInput): Promise<string> {
@@ -183,17 +253,31 @@ export async function createFaultReport(input: CreateFaultReportInput): Promise<
     throw new AppError('profile.notFound', 'profile/not-found');
   }
 
+  // Use buildingId from input if provided (housing company/maintenance), otherwise from user profile (residents)
+  const buildingId = input.buildingId ?? userProfile.buildingId;
+  if (!buildingId) {
+    throw new AppError('faults.buildingIdRequired', 'fault-report/building-required');
+  }
+
+  // Determine reporter info for display: use form input if provided, otherwise from user profile
+  const createdByName = `${userProfile.firstName || ''} ${userProfile.lastName || ''}`.trim() || userProfile.housingCompanyName || '';
+  const createdByBuilding = input.buildingId ?? userProfile.buildingId ?? undefined;
+  const createdByApartment = input.apartmentNumber ?? userProfile.apartmentNumber ?? undefined;
+
   const docRef = await addDoc(collection(db, 'faultReports'), {
     title: input.title,
     description: input.description,
     location: input.location ?? '',
     urgency: input.urgency,
     apartmentNumber: input.apartmentNumber ?? null,
-    apartmentId: userProfile.apartmentNumber ?? null,
-    buildingId: userProfile.buildingId,
+    apartmentId: input.apartmentNumber ?? userProfile.apartmentNumber ?? null,
+    buildingId,
     housingCompanyId: userProfile.housingCompanyId,
     createdBy: userProfile.id,
     createdByUserId: userProfile.id,
+    createdByName,
+    createdByBuilding,
+    createdByApartment,
     status: FaultReportStatus.OPEN,
     imageUrls: [],
     createdAt: serverTimestamp(),
@@ -323,6 +407,33 @@ export async function deleteFaultReport(id: string): Promise<void> {
   }
 
   await deleteDoc(reportRef);
+}
+
+/**
+ * Adds a work log entry to a fault report.
+ * Only accessible by service company role via Cloud Function.
+ */
+export async function addWorkLog(faultReportId: string, content: string): Promise<void> {
+  const callable = httpsCallable<
+    { faultReportId: string; content: string },
+    { ok: boolean }
+  >(functions, 'addWorkLog');
+
+  await callable({ faultReportId, content });
+}
+
+/**
+ * Deletes a work log entry from a fault report.
+ * Only accessible by service company role via Cloud Function.
+ * Users can only delete their own work logs.
+ */
+export async function deleteWorkLog(faultReportId: string, workLogId: string): Promise<void> {
+  const callable = httpsCallable<
+    { faultReportId: string; workLogId: string },
+    { ok: boolean }
+  >(functions, 'deleteWorkLog');
+
+  await callable({ faultReportId, workLogId });
 }
 
 async function uploadImages(dataUrls: string[], reportId: string, startIndex: number): Promise<string[]> {

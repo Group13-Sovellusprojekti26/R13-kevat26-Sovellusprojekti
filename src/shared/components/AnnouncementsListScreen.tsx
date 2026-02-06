@@ -31,7 +31,7 @@ import { listScreenDefaults } from '@/shared/config/listScreenConfig';
  */
 interface AnnouncementsListScreenProps {
   permissions: AnnouncementPermissions;
-  housingCompanyId: string;
+  housingCompanyId?: string;
   onCreatePress?: () => void;
   onEditPress?: (announcement: Announcement) => void;
   onDeletePress?: (announcement: Announcement) => void;
@@ -52,6 +52,7 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     announcements,
     loading,
     loadingMore,
+    refreshing,
     hasMore,
     showExpired,
     selectedTypes,
@@ -59,6 +60,7 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     toggleTypeFilter,
     deleteAnnouncement,
     loadMore,
+    refresh,
   } = useAnnouncementsVM();
 
   // Setup filter modal with helper functions
@@ -151,6 +153,8 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
     return t('announcements.noAnnouncements');
   }, [showExpired, permissions.showExpiredToggle, t]);
 
+  const hasHousingCompanyId = Boolean(housingCompanyId);
+
   return (
     <>
       <GenericListScreen
@@ -158,9 +162,17 @@ export const AnnouncementsListScreen: React.FC<AnnouncementsListScreenProps> = (
         renderItem={renderAnnouncement}
         keyExtractor={(item) => item.id}
         isLoading={loading}
+        isRefreshing={refreshing}
         isLoadingMore={loadingMore}
         hasMore={hasMore}
-        onEndReached={() => loadMore(housingCompanyId)}
+        onRefresh={() => {
+          if (!hasHousingCompanyId || !housingCompanyId) return;
+          refresh(housingCompanyId);
+        }}
+        onEndReached={() => {
+          if (!hasHousingCompanyId || !housingCompanyId) return;
+          loadMore(housingCompanyId);
+        }}
         config={{
           ...listScreenDefaults,
           headerComponent: permissions.showCreateButton ? (

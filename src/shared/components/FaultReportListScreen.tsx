@@ -17,6 +17,8 @@ import { getFaultReportFilterLabel } from '@/shared/utils/faultReportFilter';
 import { useCompanyFaultReportsState } from '@/shared/hooks/useCompanyFaultReportsState';
 import { useFilterModal } from '@/shared/hooks/useFilterModal';
 import { listScreenDefaults } from '@/shared/config/listScreenConfig';
+import { getCurrentUser } from '@/features/auth/services/auth.service';
+import { FaultReportStatus } from '@/data/models/enums';
 import type { FaultReport } from '@/data/models/FaultReport';
 
 interface FaultReportListScreenProps {
@@ -24,12 +26,19 @@ interface FaultReportListScreenProps {
   detailScreenName?: string;
   /** Whether to show edit button (resident-specific) */
   isResident?: boolean;
+  /** Whether to allow editing own reports (for housing company/maintenance) */
+  canEditOwnReports?: boolean;
+  /** Navigation target for editing (CreateFaultReport tab) */
+  editScreenName?: string;
 }
 
 export const FaultReportListScreen: React.FC<FaultReportListScreenProps> = ({
   detailScreenName = 'FaultReportDetails',
   isResident = false,
+  canEditOwnReports = false,
+  editScreenName = 'CreateFaultReport',
 }) => {
+  const currentUser = getCurrentUser();
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { reports, loading, error, refreshing, loadReports, refresh } = useCompanyFaultReportsState();
@@ -53,6 +62,11 @@ export const FaultReportListScreen: React.FC<FaultReportListScreenProps> = ({
   );
 
   const renderItem = ({ item }: { item: FaultReport }) => {
+    // Check if this report is owned by current user and can be edited
+    const isOwnReport = item.createdByUserId === currentUser?.uid;
+    const isEditableStatus = item.status === FaultReportStatus.OPEN || item.status === FaultReportStatus.CREATED;
+    const showEditButton = (isResident || (canEditOwnReports && isOwnReport)) && isEditableStatus;
+    
     return (
       <GenericListItemCard
         item={item}
@@ -60,8 +74,8 @@ export const FaultReportListScreen: React.FC<FaultReportListScreenProps> = ({
           <FaultReportCard
             report={report}
             onPress={() => navigation.navigate(detailScreenName, { faultReportId: report.id })}
-            onEdit={isResident ? () => navigation.navigate('CreateFaultReport', { faultReportId: report.id }) : undefined}
-            isResident={isResident}
+            onEdit={showEditButton ? () => navigation.navigate(editScreenName, { faultReportId: report.id }) : undefined}
+            isResident={showEditButton}
           />
         )}
         onPress={() => navigation.navigate(detailScreenName, { faultReportId: item.id })}

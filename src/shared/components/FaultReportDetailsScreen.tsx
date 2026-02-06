@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
-import { Text, Chip, ActivityIndicator } from 'react-native-paper';
-import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
+import { Text, Chip, ActivityIndicator, TextInput, Divider, IconButton } from 'react-native-paper';
+import { useFocusEffect, useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '@/shared/components/Screen';
+import { TFButton } from '@/shared/components/TFButton';
 import { StatusActionBar } from '@/shared/components/StatusActionBar';
 import { MediaViewer } from '@/shared/components/MediaViewer';
 import { FaultReportStatus, UrgencyLevel, UserRole } from '@/data/models/enums';
@@ -11,6 +12,7 @@ import { useFaultReportDetailsVM } from '@/shared/viewmodels/useFaultReportDetai
 import { useCompanyFaultReportsVM } from '@/shared/viewmodels/useCompanyFaultReportsVM';
 import { getStatusLabelKey, StatusActionDefinition } from '@/shared/utils/faultReportStatusActions';
 import { useFaultReportListVM } from '@/features/resident/faultReports/viewmodels/useFaultReportListVM';
+import { getCurrentUser } from '@/features/auth/services/auth.service';
 
 type FaultReportDetailsRouteParams = {
   FaultReportDetails: { faultReportId: string };
@@ -33,9 +35,11 @@ const getUrgencyLabel = (urgency: UrgencyLevel, t: (key: string) => string): str
 
 export const FaultReportDetailsScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<FaultReportDetailsRouteParams, 'FaultReportDetails'>>();
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [workLogInput, setWorkLogInput] = useState('');
   const {
     report,
     loading,
@@ -43,14 +47,48 @@ export const FaultReportDetailsScreen: React.FC = () => {
     loadReport,
     loadUserRole,
     updateStatus,
+    addWorkLogEntry,
+    deleteWorkLogEntry,
+    addingWorkLog,
+    deletingWorkLog,
     statusActions,
     userRole,
+    userId,
     clearError,
   } = useFaultReportDetailsVM();
   const refreshReports = useCompanyFaultReportsVM(state => state.refresh);
   const refreshResidentReports = useFaultReportListVM(state => state.refresh);
   const canManageWorkflow = userRole === UserRole.SERVICE_COMPANY;
+  const canAddWorkLogs = userRole === UserRole.SERVICE_COMPANY;
   const shouldRenderActionBar = canManageWorkflow;
+  
+  // Check if current user can edit this report
+  const currentUser = getCurrentUser();
+  const isResident = userRole === UserRole.RESIDENT;
+  const isOwnReport = report?.createdByUserId === currentUser?.uid;
+  const isEditable = isResident && isOwnReport && 
+    (report?.status === FaultReportStatus.OPEN || report?.status === FaultReportStatus.CREATED);
+  const shouldShowEditButton = isEditable;
+
+  const handleAddWorkLog = useCallback(async () => {
+    if (!report || !workLogInput.trim()) return;
+    try {
+      await addWorkLogEntry(report.id, workLogInput.trim());
+      setWorkLogInput('');
+    } catch {
+      // Error is handled by the ViewModel
+    }
+  }, [report, workLogInput, addWorkLogEntry]);
+
+  const handleDeleteWorkLog = useCallback(async (workLogId: string) => {
+    if (!report) return;
+    try {
+      await deleteWorkLogEntry(report.id, workLogId);
+    } catch {
+      // Error is handled by the ViewModel
+    }
+  }, [report, deleteWorkLogEntry]);
+
   const inProgressExtraActions = useMemo<StatusActionDefinition[]>(() => {
     if (
       !canManageWorkflow ||
@@ -142,6 +180,18 @@ export const FaultReportDetailsScreen: React.FC = () => {
           <Text style={styles.sectionLabel}>{t('faults.location')}</Text>
           <Text style={styles.sectionText}>{report.location}</Text>
 
+          {report.createdByName && (
+            <>
+              <Text style={styles.sectionLabel}>{t('faults.reportedBy')}</Text>
+              <Text style={styles.sectionText}>
+                {report.createdByName}
+                {report.createdByBuilding && ` (${t('faults.building')} ${report.createdByBuilding}`}
+                {report.createdByApartment && `, ${t('faults.apartment')} ${report.createdByApartment}`}
+                {(report.createdByBuilding || report.createdByApartment) && ')'}
+              </Text>
+            </>
+          )}
+
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <Text style={styles.sectionLabel}>{t('faults.urgency')}</Text>
@@ -193,6 +243,87 @@ export const FaultReportDetailsScreen: React.FC = () => {
               </ScrollView>
             </View>
           )}
+
+          {shouldShowEditButton && (
+            <View style={styles.editButtonContainer}>
+              <TFButton
+                title={t('faults.editTitle')}
+                onPress={() => {
+                  // Navigate to CreateFaultReport tab with edit params
+                  // Using nested navigation structure: Stack -> Tabs -> CreateFaultReport
+                  navigation.navigate('Tabs', {
+                    screen: 'CreateFaultReport',
+                    params: { faultReportId: report.id }
+                  });
+                }}
+                mode="outlined"
+                icon="pencil"
+              />
+            </View>
+          )}
+
+          {/* Work Logs Section - visible to all, editable by service company only */}
+          <View style={styles.workLogsSection}>
+            <Divider style={styles.divider} />
+            <Text style={styles.sectionLabel}>{t('faults.workLogs.title')}</Text>
+            
+            {/* Add work log form - only for service company */}
+            {canAddWorkLogs && (
+              <View style={styles.workLogForm}>
+                <TextInput
+                  mode="outlined"
+                  placeholder={t('faults.workLogs.placeholder')}
+                  value={workLogInput}
+                  onChangeText={setWorkLogInput}
+                  multiline
+                  numberOfLines={2}
+                  style={styles.workLogInput}
+                />
+                <TFButton
+                  title={t('faults.workLogs.add')}
+                  onPress={handleAddWorkLog}
+                  mode="contained"
+                  loading={addingWorkLog}
+                  disabled={!workLogInput.trim() || addingWorkLog}
+                  style={styles.workLogButton}
+                />
+              </View>
+            )}
+
+            {/* Display existing work logs */}
+            {(report.workLogs ?? []).length > 0 ? (
+              <View style={styles.workLogsList}>
+                {(report.workLogs ?? []).map((log) => {
+                  const canDelete = canAddWorkLogs && log.createdBy === userId;
+                  return (
+                    <View key={log.id} style={styles.workLogItem}>
+                      <View style={styles.workLogHeader}>
+                        <View style={styles.workLogHeaderLeft}>
+                          <Text style={styles.workLogAuthor}>{log.createdByName}</Text>
+                          <Text style={styles.workLogDate}>
+                            {log.createdAt.toLocaleDateString()}
+                          </Text>
+                        </View>
+                        {canDelete && (
+                          <IconButton
+                            icon="delete-outline"
+                            size={18}
+                            onPress={() => handleDeleteWorkLog(log.id)}
+                            disabled={deletingWorkLog}
+                            style={styles.workLogDeleteButton}
+                            accessibilityLabel={t('common.delete')}
+                          />
+                        )}
+                      </View>
+                      <Text style={styles.workLogContent}>{log.content}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text style={styles.noWorkLogs}>{t('faults.workLogs.empty')}</Text>
+            )}
+          </View>
 
           {error && (
             <Text style={styles.errorText} onPress={clearError}>
@@ -268,6 +399,10 @@ const styles = StyleSheet.create({
   imageSection: {
     marginBottom: 12,
   },
+  editButtonContainer: {
+    marginTop: 16,
+    marginBottom: 12,
+  },
   additionalInfoSection: {
     marginBottom: 12,
   },
@@ -284,6 +419,63 @@ const styles = StyleSheet.create({
   },
   actionBar: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 8,
+  },
+  // Work logs styles
+  workLogsSection: {
+    marginTop: 8,
+  },
+  divider: {
+    marginBottom: 16,
+  },
+  workLogForm: {
+    marginBottom: 16,
+  },
+  workLogInput: {
+    marginBottom: 8,
+  },
+  workLogButton: {
+    alignSelf: 'flex-start',
+  },
+  workLogsList: {
+    gap: 12,
+  },
+  workLogItem: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    padding: 12,
+  },
+  workLogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  workLogHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  workLogAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  workLogDate: {
+    fontSize: 12,
+    color: '#888',
+  },
+  workLogDeleteButton: {
+    margin: -8,
+  },
+  workLogContent: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  noWorkLogs: {
+    fontSize: 14,
+    color: '#888',
+    fontStyle: 'italic',
   },
 });

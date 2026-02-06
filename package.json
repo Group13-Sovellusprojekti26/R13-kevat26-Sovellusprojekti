@@ -7,7 +7,8 @@
     "start:clean": "expo start -c",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "postinstall": "node scripts/patch-expo-haptics-tsconfig.cjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -23,6 +24,7 @@
     "expo-haptics": "~15.0.8",
     "expo-image-manipulator": "^14.0.8",
     "expo-image-picker": "~17.0.10",
+    "expo-linear-gradient": "~15.0.8",
     "expo-localization": "^17.0.8",
     "expo-status-bar": "~3.0.9",
     "firebase": "^12.7.0",
@@ -31,16 +33,19 @@
     "react-hook-form": "^7.71.0",
     "react-i18next": "^16.5.2",
     "react-native": "0.81.5",
+    "react-native-gifted-charts": "^1.4.73",
     "react-native-image-zoom-viewer": "^3.0.1",
     "react-native-paper": "^5.14.5",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-svg": "^15.15.2",
     "zod": "^4.3.5",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
     "@types/react-native": "^0.72.8",
+    "expo-module-scripts": "^5.0.8",
     "firebase-tools": "^15.4.0",
     "typescript": "~5.9.2"
   },

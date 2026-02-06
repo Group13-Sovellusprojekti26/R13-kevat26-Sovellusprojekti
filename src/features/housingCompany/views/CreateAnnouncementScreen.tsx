@@ -13,18 +13,20 @@ import { haptic } from '@/shared/utils/haptics';
 import { handleAttachmentUpload } from '@/shared/utils/attachmentUpload';
 import { editAnnouncementStyles as styles } from '../styles/announcements.styles';
 import type { HousingCompanyStackParamList } from '@/app/navigation/HousingCompanyStack';
+import type { MaintenanceStackParamList } from '@/app/navigation/MaintenanceStack';
 import { AnnouncementFormContent, AnnouncementFormData } from './components/AnnouncementFormContent';
 import { announcementFormSchema, AnnouncementFormSchema } from '../schemas/announcementForm.schema';
 
 /**
  * Screen component for creating new announcements.
  * Uses shared AnnouncementFormContent component to reduce code duplication.
+ * Works with both HousingCompany and Maintenance stacks.
  * 
  * @component CreateAnnouncementScreen
  */
 export const CreateAnnouncementScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<HousingCompanyStackParamList | MaintenanceStackParamList>>();
   const [attachments, setAttachments] = React.useState<any[]>([]);
 
   const { createAnnouncement, loading, uploadAttachments } = useAnnouncementsVM();

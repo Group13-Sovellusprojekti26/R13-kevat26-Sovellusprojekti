@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontWeight: '500',
-    flex: 1,
+    flex: 1.3,
   },
   infoValue: {
     flex: 2,

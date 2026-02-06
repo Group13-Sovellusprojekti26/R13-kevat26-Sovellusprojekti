@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Image, Pressable } from 'react-native';
 import { Text, Chip, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { FaultReport } from '@/data/models/FaultReport';
 import { getStatusLabelKey } from '@/shared/utils/faultReportStatusActions';
 import { FaultReportStatus } from '@/data/models/enums';
-import { MediaViewer } from './MediaViewer';
 import { GenericContentCard } from './GenericContentCard';
 
 type FaultReportCardProps = {
@@ -23,11 +22,9 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
   const canEdit =
     Boolean(isResident) &&
     (report.status === FaultReportStatus.OPEN || report.status === FaultReportStatus.CREATED);
-  const [viewerVisible, setViewerVisible] = useState(false);
 
   return (
-    <>
-      <GenericContentCard
+    <GenericContentCard
         item={report}
         onPress={onPress}
         renderHeader={(item) => (
@@ -61,14 +58,7 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
         )}
         renderThumbnail={(item) =>
           thumbnailUrl ? (
-            <Pressable
-              onPress={(event) => {
-                event.stopPropagation();
-                setViewerVisible(true);
-              }}
-            >
-              <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
-            </Pressable>
+            <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} />
           ) : (
             <View style={[styles.placeholder, { backgroundColor: theme.colors.primaryContainer }]}>
               <MaterialCommunityIcons
@@ -87,6 +77,20 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
             <Text style={[styles.location, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
               {item.location}
             </Text>
+            {item.createdByName && (
+              <View style={styles.creatorRow}>
+                <MaterialCommunityIcons 
+                  name="account-outline" 
+                  size={12} 
+                  color={theme.colors.onSurfaceVariant}
+                />
+                <Text style={[styles.creatorInfo, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
+                  {item.createdByName}
+                  {item.createdByBuilding && ` • ${t('faults.building')} ${item.createdByBuilding}`}
+                  {item.createdByApartment && ` • ${item.createdByApartment}`}
+                </Text>
+              </View>
+            )}
           </View>
         )}
         renderMetadata={(item) => (
@@ -94,14 +98,7 @@ export const FaultReportCard: React.FC<FaultReportCardProps> = ({ report, onPres
             {item.createdAt.toLocaleDateString()}
           </Text>
         )}
-      />
-      <MediaViewer
-        imageUrls={report.imageUrls ?? []}
-        visible={viewerVisible}
-        onClose={() => setViewerVisible(false)}
-        initialIndex={0}
-      />
-    </>
+    />
   );
 };
 
@@ -144,6 +141,16 @@ const styles = StyleSheet.create({
   },
   location: {
     fontSize: 12,
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  creatorInfo: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
   },
   date: {
     fontSize: 12,

@@ -160,9 +160,12 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontWeight: '500',
+    flex: 1.3,
   },
   infoValue: {
     fontWeight: 'bold',
+    flex: 2,
+    textAlign: 'right',
   },
   welcomeCard: {
     padding: 18,
