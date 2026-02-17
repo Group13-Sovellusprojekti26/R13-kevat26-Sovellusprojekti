@@ -1,9 +1,5 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { 
-  initializeAuth,
-  getReactNativePersistence,
-  Auth,
-} from 'firebase/auth';
+import { initializeAuth, Auth } from 'firebase/auth';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
@@ -20,11 +16,19 @@ const firebaseConfig = {
 
 const app: FirebaseApp = initializeApp(firebaseConfig);
 
-// Initialize Auth with React Native AsyncStorage persistence
-// This keeps the user logged in even after closing the app
-export const auth: Auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
+let persistenceOption: unknown | undefined;
+try {
+  const rn = require('firebase/auth/react-native');
+  if (rn && typeof rn.getReactNativePersistence === 'function') {
+    persistenceOption = rn.getReactNativePersistence(ReactNativeAsyncStorage);
+  }
+} catch (e) {
+  // ignore
+}
+
+export const auth: Auth = persistenceOption
+  ? initializeAuth(app, { persistence: persistenceOption as any })
+  : initializeAuth(app);
 
 export const db: Firestore = getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);

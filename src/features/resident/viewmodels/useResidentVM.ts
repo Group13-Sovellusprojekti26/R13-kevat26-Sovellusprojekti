@@ -20,6 +20,11 @@ interface ResidentState {
   setHasHydrated: (state: boolean) => void;
 }
 
+/** Subset of state that gets persisted to AsyncStorage */
+interface PersistedResidentState {
+  profile: UserProfile | null;
+}
+
 /**
  * Resident ViewModel
  * Manages user profile state with persistence
@@ -74,7 +79,7 @@ export const useResidentVM = create<ResidentState>()(
     }),
     {
       name: STORAGE_KEYS.USER_PROFILE,
-      storage: createZustandStorage<ResidentState>(),
+      storage: createZustandStorage<PersistedResidentState>(),
       // Only persist profile data
       partialize: (state) => ({
         profile: state.profile,

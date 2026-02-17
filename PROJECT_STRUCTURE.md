@@ -8,12 +8,13 @@ Production-ready Expo React Native application with TypeScript, MVVM architectur
 - **Language**: TypeScript
 - **UI Library**: react-native-paper (Material Design 3)
 - **Navigation**: React Navigation (Native Stack + Bottom Tabs)
-- **Backend**: Firebase (Auth, Firestore, Storage)
-- **Architecture**: MVVM (View, ViewModel, Data separation)
+- **Backend**: Firebase (Auth, Firestore, Storage, Cloud Functions)
+- **Architecture**: MVVM (View, ViewModel, Repository separation)
 - **State Management**: Zustand
 - **Forms**: react-hook-form + zod validation
 - **Localization**: i18next + react-i18next + expo-localization
-- **Image Picking**: expo-image-picker
+- **Image Handling**: expo-image-picker + expo-image-manipulator
+- **Charts**: react-native-gifted-charts
 
 ## Project Structure
 
@@ -23,6 +24,14 @@ src/
 │   ├── navigation/         # Navigation configuration
 │   │   ├── RootNavigator.tsx
 │   │   ├── AuthNavigator.tsx
+│   │   ├── AdminStack.tsx
+│   │   ├── HousingCompanyStack.tsx
+│   │   ├── HousingCompanyTabs.tsx
+│   │   ├── MaintenanceStack.tsx
+│   │   ├── MaintenanceTabs.tsx
+│   │   ├── ServiceCompanyStack.tsx
+│   │   ├── ServiceCompanyTabs.tsx
+│   │   ├── ResidentStack.tsx
 │   │   └── ResidentTabs.tsx
 │   ├── providers/          # App providers
 │   │   └── AppProviders.tsx
@@ -37,32 +46,77 @@ src/
 │   ├── firebase/          # Firebase configuration
 │   │   └── firebase.ts
 │   ├── repositories/      # Data access layer
+│   │   ├── users.repo.ts
 │   │   ├── faultReports.repo.ts
 │   │   ├── announcements.repo.ts
-│   │   └── users.repo.ts
+│   │   ├── housingCompanies.repo.ts
+│   │   ├── residentInvites.repo.ts
+│   │   ├── managementInvites.repo.ts
+│   │   ├── serviceCompanyInvites.repo.ts
+│   │   ├── partners.repo.ts
+│   │   └── settings.repo.ts
 │   └── models/           # Data models
+│       ├── UserProfile.ts
 │       ├── FaultReport.ts
 │       ├── Announcement.ts
-│       ├── UserProfile.ts
+│       ├── HousingCompany.ts
 │       └── enums.ts
 ├── features/
 │   ├── auth/
 │   │   ├── views/        # UI screens
 │   │   ├── viewmodels/   # Business logic
-│   │   ├── services/     # External services
+│   │   ├── services/     # Auth services
 │   │   └── types/        # Feature-specific types
-│   └── resident/
-│       └── faultReports/
-│           ├── views/
-│           ├── viewmodels/
-│           └── ...
+│   ├── admin/
+│   │   ├── views/
+│   │   └── viewmodels/
+│   ├── housingCompany/
+│   │   ├── views/
+│   │   ├── viewmodels/
+│   │   ├── utils/
+│   │   ├── schemas/
+│   │   └── hooks/
+│   ├── maintenance/
+│   │   ├── views/
+│   │   └── viewmodels/
+│   ├── serviceCompany/
+│   │   ├── views/
+│   │   └── viewmodels/
+│   ├── resident/
+│   │   ├── faultReports/
+│   │   │   ├── views/
+│   │   │   └── viewmodels/
+│   │   ├── views/
+│   │   └── viewmodels/
+│   └── settings/
+│       ├── views/
+│       ├── viewmodels/
+│       └── types/
 └── shared/
     ├── components/       # Reusable components
     │   ├── Screen.tsx
     │   ├── TFButton.tsx
-    │   └── TFTextField.tsx
-    └── utils/           # Utility functions
-        └── errors.ts
+    │   ├── TFTextField.tsx
+    │   └── ...
+    ├── hooks/
+    ├── utils/           # Utility functions
+    ├── types/
+    ├── styles/
+    └── config/
+
+functions/               # Firebase Cloud Functions
+├── src/
+│   ├── index.ts
+│   ├── faultReports.ts
+│   ├── announcements.ts
+│   ├── housingCompanies.ts
+│   ├── userProfile.ts
+│   ├── residentInvites.ts
+│   ├── managementInvites.ts
+│   ├── serviceCompanyInvites.ts
+│   ├── partnerManagement.ts
+│   └── utils.ts
+└── package.json
 ```
 
 ## Firebase Setup
@@ -104,15 +158,34 @@ npx expo start --web
 
 ### Authentication
 - Email/Password sign-in with Firebase Auth
+- Role-based registration with invite codes
 - Form validation using react-hook-form + zod
 - MVVM architecture with Zustand state management
 
-### Fault Reports (Resident)
-- List all fault reports
-- Create new fault reports
-- Image upload support (ready for implementation)
+### User Roles
+- **Admin**: Create housing companies, manage global settings
+- **Housing Company**: Manage residents, partners, announcements
+- **Maintenance (Property Manager)**: Handle fault reports, publish announcements
+- **Service Company**: View and complete assigned tasks
+- **Resident**: Submit fault reports, view announcements
+
+### Fault Reports
+- List all fault reports with filtering
+- Create new fault reports with images
+- Image upload with Firebase Storage
 - Urgency levels (Low, Medium, High, Urgent)
 - Status tracking (Open, In Progress, Resolved, Closed)
+- Assignment to service companies
+
+### Announcements
+- Housing company and maintenance can publish announcements
+- Image support for announcements
+- All residents in housing company receive announcements
+
+### Invite System
+- 8-character invite codes for each role
+- Secure registration flow
+- Housing company scoped invitations
 
 ### Localization
 - Finnish (fi) and English (en) support
@@ -129,12 +202,17 @@ npx expo start --web
 ### ViewModel
 - Zustand stores in `viewmodels/` folders
 - Contains business logic and state
-- Separated from UI concerns
+- Calls repositories for data operations
 
-### Data/Services
-- Firebase services in `services/` folders
-- Repositories in `data/repositories/`
+### Repository
+- Repository pattern in `data/repositories/`
+- Firestore operations and Cloud Functions calls
+- Only layer that accesses Firebase SDK
 - Clean separation between UI and data layer
+
+### Model
+- TypeScript types and interfaces in `data/models/`
+- Enums for Status, Priority, Role
 
 ## Code Guidelines
 
@@ -143,16 +221,20 @@ npx expo start --web
 - UI strings are localized (no hardcoded text)
 - Consistent file naming conventions
 - No circular dependencies
+- UI components never call Firebase directly
+- Only repositories access Firebase SDK
+- ViewModels handle all business logic
 
 ## Next Steps
 
 1. Configure Firebase with your credentials
-2. Set up Firestore security rules
-3. Implement image upload functionality
-4. Add more features (announcements, user profile, etc.)
+2. Deploy Firestore security rules
+3. Deploy Cloud Functions
+4. Test all user roles and workflows
 5. Add error boundaries
 6. Add loading screens
 7. Add unit tests
+8. Performance optimization
 
 ## License
 
