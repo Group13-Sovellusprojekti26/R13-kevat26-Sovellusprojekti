@@ -63,10 +63,18 @@ npm run deploy
 /
 ├── firestore.rules               # Firestore Security Rules
 ├── firestore.indexes.json        # Firestore-indeksit
+├── storage.rules                 # Firebase Storage Rules
 ├── firebase.json                 # Firebase-konfiguraatio
 ├── src/                          # Sovelluksen lähdekoodi
 │   ├── app/                      # Sovellustason konfiguraatiot
 │   │   ├── navigation/           # Navigaattorit (stack, tabs)
+│   │   │   ├── RootNavigator.tsx
+│   │   │   ├── AuthNavigator.tsx
+│   │   │   ├── AdminStack.tsx
+│   │   │   ├── HousingCompanyStack.tsx + HousingCompanyTabs.tsx
+│   │   │   ├── MaintenanceStack.tsx + MaintenanceTabs.tsx
+│   │   │   ├── ServiceCompanyStack.tsx + ServiceCompanyTabs.tsx
+│   │   │   └── ResidentStack.tsx + ResidentTabs.tsx
 │   │   ├── providers/            # React-providerit
 │   │   ├── theme/                # MD3-teema
 │   │   └── i18n/                 # Kielitiedostot (fi/en)
@@ -74,27 +82,74 @@ npm run deploy
 │   ├── data/                     # Data-kerros
 │   │   ├── firebase/             # Firebase-konfiguraatio
 │   │   ├── models/               # TypeScript-mallit
-│   │   └── repositories/         # Firestore-operaatiot
+│   │   │   ├── UserProfile.ts
+│   │   │   ├── FaultReport.ts
+│   │   │   ├── Announcement.ts
+│   │   │   ├── HousingCompany.ts
+│   │   │   └── enums.ts
+│   │   └── repositories/         # Firestore + Cloud Functions -operaatiot
+│   │       ├── users.repo.ts
+│   │       ├── faultReports.repo.ts
+│   │       ├── announcements.repo.ts
+│   │       ├── housingCompanies.repo.ts
+│   │       ├── residentInvites.repo.ts
+│   │       ├── managementInvites.repo.ts
+│   │       ├── serviceCompanyInvites.repo.ts
+│   │       ├── partners.repo.ts
+│   │       └── settings.repo.ts
 │   │
 │   ├── features/                 # Ominaisuudet (MVVM)
 │   │   ├── auth/                 # Kirjautuminen
-│   │   │   ├── views/            # UI-komponentit
-│   │   │   ├── viewmodels/       # Business-logiikka (Zustand)
-│   │   │   ├── services/         # Firebase-kutsut
-│   │   │   └── types/            # Tyypit
-│   │   │
-│   │   └── resident/             # Asukkaan toiminnot
-│   │       └── faultReports/     # Vikailmoitukset
-│   │           ├── views/        # Lista- ja luontinäkymät
-│   │           └── viewmodels/   # State + logiikka
+│   │   │   ├── views/
+│   │   │   ├── viewmodels/
+│   │   │   ├── services/
+│   │   │   └── types/
+│   │   ├── admin/                # Admin-toiminnot
+│   │   │   ├── views/
+│   │   │   └── viewmodels/
+│   │   ├── housingCompany/       # Taloyhtiön toiminnot
+│   │   │   ├── views/
+│   │   │   ├── viewmodels/
+│   │   │   ├── utils/
+│   │   │   ├── schemas/
+│   │   │   └── hooks/
+│   │   ├── maintenance/          # Isännöinnin toiminnot
+│   │   │   ├── views/
+│   │   │   └── viewmodels/
+│   │   ├── serviceCompany/       # Huoltoyhtiön toiminnot
+│   │   │   ├── views/
+│   │   │   └── viewmodels/
+│   │   ├── resident/             # Asukkaan toiminnot
+│   │   │   ├── faultReports/
+│   │   │   │   ├── views/
+│   │   │   │   └── viewmodels/
+│   │   │   ├── views/
+│   │   │   └── viewmodels/
+│   │   └── settings/             # Asetukset
+│   │       ├── views/
+│   │       ├── viewmodels/
+│   │       └── types/
 │   │
 │   └── shared/                   # Jaetut komponentit
-│       ├── components/           # Screen, Button, TextField
-│       └── utils/                # Apufunktiot
+│       ├── components/
+│       ├── hooks/
+│       ├── utils/
+│       ├── types/
+│       ├── styles/
+│       └── config/
 │
 ├── functions/                    # Firebase Cloud Functions
 │   └── src/
-│       └── index.ts              # Backend-funktiot
+│       ├── index.ts
+│       ├── faultReports.ts
+│       ├── announcements.ts
+│       ├── housingCompanies.ts
+│       ├── userProfile.ts
+│       ├── residentInvites.ts
+│       ├── managementInvites.ts
+│       ├── serviceCompanyInvites.ts
+│       ├── partnerManagement.ts
+│       └── utils.ts
 │
 ├── App.tsx                       # Sovelluksen entry point
 └── index.ts                      # Expo-rekisteröinti
@@ -107,22 +162,22 @@ Jokainen ominaisuus noudattaa MVVM-rakennetta:
 
 - **View** (views/): React-komponentit, UI
 - **ViewModel** (viewmodels/): Zustand-storet, state + logiikka
-- **Service** (services/): Firebase-kutsut, API
+- **Repository** (repositories/): Firestore + Cloud Functions -kutsut
 - **Model** (data/models/): TypeScript-tyypit
 
 Esimerkki: Uusi vikailmoitus
 1. Käyttäjä täyttää lomakkeen `CreateFaultReportScreen.tsx`:ssä
 2. ViewModel `useCreateFaultReportVM.ts` validoi ja hallitsee staten
-3. Service kutsuu `faultReports.repo.ts`:n `createFaultReport()`
+3. ViewModel kutsuu `faultReports.repo.ts`:n `createFaultReport()`
 4. Data tallennetaan Firestoreen
 
 ## Uuden ominaisuuden lisääminen
 
 1. Luo kansio `src/features/uusi-ominaisuus/`
-2. Lisää alikansiot: `views/`, `viewmodels/`, `services/`, `types/`
+2. Lisää alikansiot: `views/`, `viewmodels/`, `types/`
 3. Luo View-komponentti (UI)
 4. Luo ViewModel (Zustand)
-5. Luo Service (Firebase-operaatiot)
+5. Luo/päivitä Repository (Firebase-operaatiot)
 6. Lisää navigaatioon
 
 ## Tärkeää
@@ -142,8 +197,8 @@ npm run start:clean  # Tyhjennä cache ja käynnistä
 ## Firebase Backend -arkkitehtuuri
 
 TaloFix käyttää **Security Rules + Cloud Functions** -hybridimallia:
-- 📖 **Yksinkertainen luku/kirjoitus** → Suora Firestore + Security Rules (nopea, halpa)
-- 🔐 **Privilegoidut operaatiot** → Cloud Functions (admin/maintenance-roolit)
+- **Yksinkertainen luku/kirjoitus** → Suora Firestore + Security Rules (nopea, halpa)
+- **Privilegoidut operaatiot** → Cloud Functions (admin/maintenance-roolit)
 
 ### Security Rules
 
@@ -182,22 +237,5 @@ Tai deployaa kaikki (rules + functions) kerralla:
 ```bash
 firebase deploy
 ```
-
-## GitHub Copilot -ohjeistus
-
-Tässä projektissa käytetään yhteistä GitHub Copilot -ohjeistustiedostoa:
-
-.github/copilot-instructions.md
-
-Ohjeistuksen tarkoituksena on varmistaa, että tekoälyn avulla tuotettu koodi noudattaa sovittua projektin rakennetta, arkkitehtuuria ja kehityskäytäntöjä.
-
-Copilot on ohjeistettu muun muassa:
-- noudattamaan MVVM-arkkitehtuuria
-- pitämään Firebase-kutsut vain repository-kerroksessa
-- käyttämään olemassa olevaa kansiorakennetta
-- hyödyntämään shared-kansion komponentteja ja apufunktioita
-- välttämään rakenteellisia oikopolkuja ja päällekkäistä koodia
-
-Jos jokin muutos on ristiriidassa näiden sääntöjen kanssa, se käsitellään tiimin kesken ennen toteutusta.
 
 

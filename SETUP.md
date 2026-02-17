@@ -30,18 +30,24 @@
 TaloFix/
 ├── src/
 │   ├── app/               # App-level configuration
-│   │   ├── navigation/    # Navigation setup
+│   │   ├── navigation/    # Navigation setup (all roles)
 │   │   ├── providers/     # React Context providers
 │   │   ├── theme/         # Material Design 3 theme
 │   │   └── i18n/          # Internationalization (FI/EN)
 │   ├── data/              # Data layer
 │   │   ├── firebase/      # Firebase config
-│   │   ├── repositories/  # Data access
+│   │   ├── repositories/  # Data access (Firestore + Cloud Functions)
 │   │   └── models/        # TypeScript models
 │   ├── features/          # Feature modules (MVVM)
 │   │   ├── auth/          # Authentication
-│   │   └── resident/      # Resident features
+│   │   ├── admin/         # Admin features
+│   │   ├── housingCompany/   # Housing company features
+│   │   ├── maintenance/      # Property manager features
+│   │   ├── serviceCompany/   # Service company features
+│   │   ├── resident/         # Resident features
+│   │   └── settings/         # Settings for all roles
 │   └── shared/            # Shared components & utils
+├── functions/            # Firebase Cloud Functions
 ├── App.tsx               # Root component
 └── package.json          # Dependencies
 ```
@@ -54,36 +60,45 @@ Each feature follows this structure:
 feature/
 ├── views/         # React components (UI)
 ├── viewmodels/    # Business logic (Zustand stores)
-├── services/      # External API calls
 └── types/         # TypeScript types
 ```
+
+Data access is centralized in `data/repositories/`.
 
 ## Key Technologies
 
 - **UI**: react-native-paper (Material Design 3)
 - **Forms**: react-hook-form + zod validation
 - **State**: zustand
-- **Navigation**: React Navigation
-- **Backend**: Firebase (modular SDK v9+)
-- **i18n**: i18next
+- **Navigation**: React Navigation (Stack + Bottom Tabs)
+- **Backend**: Firebase (Auth, Firestore, Storage, Cloud Functions)
+- **i18n**: i18next + react-i18next
+- **Images**: expo-image-picker + expo-image-manipulator
+- **Charts**: react-native-gifted-charts
 
 ## Features Implemented
 
-✅ Authentication (Login with email/password)
-✅ Fault Report List (MVVM pattern)
-✅ Create Fault Report (with form validation)
+✅ Authentication (Login, Register with invite codes)
+✅ Role-based navigation (Admin, Housing Company, Maintenance, Service Company, Resident)
+✅ Fault Report management (Create, List, Update, Assign)
+✅ Announcements (Create, List, Publish)
+✅ Housing Company management (Create, Invite residents/partners)
+✅ Invite code system (8-character codes for secure registration)
+✅ Image upload (Fault reports, Announcements)
 ✅ Material Design 3 theming
 ✅ Finnish/English localization
-✅ Bottom tab navigation
-✅ Firebase integration (ready to configure)
+✅ Firebase Security Rules + Cloud Functions hybrid
+✅ Statistics and charts
 
 ## Next Steps
 
 1. Configure your Firebase credentials
-2. Test the authentication flow
-3. Add more features as needed
-4. Customize the theme colors
-5. Add unit tests
+2. Deploy Firestore security rules and Cloud Functions
+3. Test the authentication flow with different roles
+4. Create a housing company (admin role required)
+5. Generate invite codes and test registration
+6. Customize the theme colors
+7. Add unit tests
 
 ## Troubleshooting
 
@@ -93,7 +108,9 @@ feature/
 
 **Firebase Errors**: 
 - Verify `.env` file has correct credentials
-- Check Firebase console for enabled services
+- Check Firebase console for enabled services (Auth, Firestore, Storage, Functions)
+- Ensure Security Rules are deployed: `firebase deploy --only firestore:rules`
+- Ensure Cloud Functions are deployed: `cd functions && npm run deploy`
 
 **Navigation Errors**: 
 - Ensure all navigation dependencies are installed
@@ -103,9 +120,10 @@ feature/
 
 - Use `t('key')` for all UI strings (localization)
 - Keep ViewModels separate from Views
-- Use repositories for all Firebase calls
+- Use repositories for all Firebase calls (never call Firebase directly from UI or ViewModels)
 - Follow TypeScript strict mode
 - Comment code in English only
+- Security Rules + Cloud Functions hybrid: simple operations use direct Firestore, privileged operations use Functions
 
 ## Support
 
